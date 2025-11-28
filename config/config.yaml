@@ -1,0 +1,23 @@
+# config/config.yaml
+# -------------------------------------------------
+# Centralized configuration for SVM and QSVM benchmarks
+# -------------------------------------------------
+
+# Dataset choice (must match a key in data_loader.py mapping)
+# Options: breast_cancer, parity4d, parity4d_stressed, parity6d, parity6d_stressed
+dataset: breast_cancer
+
+# Classical SVM hyperparameters
+svm:
+  kernel: linear   # options: linear, rbf, poly, sigmoid
+  C: 1.0           # regularization strength
+  gamma: scale     # kernel coefficient (scale, auto, or float)
+
+# PCA settings (used in *_PCA scripts)
+pca:
+  n_components: 4  # number of principal components to keep
+
+# Notes:
+# - QSVM scripts ignore svm hyperparameters (QSVC builds its own kernel internally).
+# - Switch dataset here to run different experiments without touching scripts.
+# - PCA block is optional; only PCA scripts use it.

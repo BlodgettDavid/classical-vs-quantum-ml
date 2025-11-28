@@ -1,48 +1,77 @@
-# src/phase1/SVM_BreastCancer.py
+# SVM_BreastCancer.py
+# Phase 1: Classical SVM benchmark on breast cancer dataset
 
 import sys
 import os
+import time
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 # Ensure src/ is in sys.path for root-level execution
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 SRC_PATH = os.path.join(ROOT_DIR, "..", "..", "src")
 sys.path.append(os.path.abspath(SRC_PATH))
 
-import yaml
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-
-from utils.data_loader import load_dataset
-from utils.evaluator import evaluate_model
+# Modular imports
 from utils.logger import log_results
+from utils.visualizer import plot_projected_decision_boundary
+from utils.data_loader import load_dataset_from_config   # NEW unified loader
 
-# Load config.yaml
-CONFIG_PATH = os.path.join(SRC_PATH, "config", "config.yaml")
-with open(CONFIG_PATH, "r") as f:
-    config = yaml.safe_load(f)
+# -------------------------------
+# 1. Load dataset (via config)
+# -------------------------------
+df, cfg = load_dataset_from_config()
 
-# Extract config values
-dataset_name = config["dataset"]
-test_size = config["test_size"]
-random_state = config["random_state"]
-svm_params = config["svm"]
-
-# Load and prepare data
-df = load_dataset(dataset_name)
-X = df.drop("target", axis=1).values
+# Assume last column is target, rest are features
+X = df.drop(columns=["target"]).values
 y = df["target"].values
 
+# -------------------------------
+# 2. Train/test split + scaling
+# -------------------------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=test_size, random_state=random_state
-)
+# -------------------------------
+# 3. Train classical SVM (linear kernel)
+# -------------------------------
+model = SVC(kernel="linear")
 
-# Train classical SVM
-svm_model = SVC(kernel=svm_params["kernel"], C=svm_params["C"], gamma=svm_params["gamma"])
-metrics = evaluate_model(svm_model, X_train, y_train, X_test, y_test, label="SVM Breast Cancer")
+start = time.time()
+model.fit(X_train, y_train)
+training_time = round(time.time() - start, 4)
 
-# Log results
+# -------------------------------
+# 4. Evaluate
+# -------------------------------
+y_train_pred = model.predict(X_train)
+y_test_pred = model.predict(X_test)
+
+train_accuracy = accuracy_score(y_train, y_train_pred)
+test_accuracy = accuracy_score(y_test, y_test_pred)
+generalization_gap = round(train_accuracy - test_accuracy, 4)
+
+metrics = {
+    "model": "SVM_BreastCancer",
+    "dataset": cfg["dataset"],   # use dataset name from config
+    "accuracy": test_accuracy,
+    "train_accuracy": train_accuracy,
+    "generalization_gap": generalization_gap,
+    "training_time": training_time
+}
 log_results(metrics)
+
+print("\n=== Classical SVM Breast Cancer Results ===")
+for k, v in metrics.items():
+    print(f"{k}: {v}")
+
+# -------------------------------
+# 5. Visualize decision boundary
+# -------------------------------
+plot_projected_decision_boundary(model, X_test, y_test, title="Classical SVM Breast Cancer (PCA Projection)")

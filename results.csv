@@ -1,0 +1,5 @@
+model,dataset,accuracy,train_accuracy,generalization_gap,training_time,timestamp
+SVM_Parity,parity6d_stressed,0.375,0.6875,0.3125,0.0161,2025-11-26T09:45:51Z
+QSVM_Parity,parity6d_stressed,0.53125,1.0,0.4688,6.3104,2025-11-26T09:54:39Z
+SVM_BreastCancer_PCA,breast_cancer,0.9649122807017544,0.9321608040201005,-0.0328,0.0031,2025-11-26T10:09:58Z
+QSVM_BreastCancer_PCA,breast_cancer,0.5847953216374269,0.7989949748743719,0.2142,511.2693,2025-11-26T11:43:05Z

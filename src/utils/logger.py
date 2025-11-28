@@ -1,37 +1,30 @@
-# src/utils/logger.py
-
+# utils/logger.py
 import os
 import csv
-import psutil
-import time
+from datetime import datetime
 
-ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
+def _repo_root_from_utils() -> str:
+    # utils/ lives at src/utils/, so root is two levels up
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-def log_results(metrics):
-    # Dynamically name results file based on model label
-    label = metrics["model"]
-    filename = f"results_{label.replace(' ', '_')}.csv"
-    
-    RESULTS_PATH = os.path.join(ROOT_DIR, "..", "..", "data", filename)
+def log_results(metrics: dict, filename: str = "results.csv") -> str:
+    """
+    Append metrics to a single CSV at the repo root.
+    Returns the absolute path to the written file.
+    """
+    root = _repo_root_from_utils()
+    filepath = os.path.join(root, filename)
 
-    # Add memory usage
-    process = psutil.Process(os.getpid())
-    memory_MB = process.memory_info().rss / 1024 / 1024
-    metrics["memory_MB"] = round(memory_MB, 2)
+    # Ensure stable keys and add timestamp
+    metrics = {**metrics, "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z"}
 
-    # Add backend info if missing
-    if "backend" not in metrics:
-        metrics["backend"] = "N/A"
-
-    # Write header if file doesn't exist
-    write_header = not os.path.exists(RESULTS_PATH)
-    with open(RESULTS_PATH, mode="a", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=[
-            "model", "accuracy", "train_accuracy", "generalization_gap",
-            "training_time", "memory_MB", "backend"
-        ])
-        if write_header:
+    file_exists = os.path.isfile(filepath)
+    with open(filepath, mode="a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(metrics.keys()))
+        if not file_exists:
             writer.writeheader()
         writer.writerow(metrics)
 
-    print(f"✅ Logged results to: {os.path.abspath(RESULTS_PATH)}")
+    # Also echo to console (durable feedback for students)
+    print("\n[log_results] wrote row to:", filepath)
+    return filepath
