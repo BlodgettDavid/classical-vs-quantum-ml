@@ -10,3 +10,4 @@ qiskit-aer==0.17.2
 qiskit-algorithms==0.4.0
 qiskit-machine-learning==0.8.4
 rustworkx==0.17.1
+psutil==7.1.3

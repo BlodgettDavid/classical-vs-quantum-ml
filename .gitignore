@@ -1,6 +1,18 @@
+# Virtual environment
 .venv/
+
+# Python cache
 __pycache__/
 *.pyc
+
+# OS junk
 .DS_Store
 Thumbs.db
+
+# Instructor-only materials
+instructor_only/
+
+# Local results and plots
+results.csv
+plots/
 data/results_*.csv

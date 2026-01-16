@@ -1,64 +1,92 @@
-\# Hybrid Quantum Machine Learning with Qiskit
+# 🔬 Quantum vs. Classical SVM Benchmarking with Qiskit
 
-
-
-This course introduces hybrid quantum-classical machine learning using Qiskit and realistic noise simulation. Students will build and evaluate quantum neural networks (QNNs) using VQC, SamplerQNN, and EstimatorQNN, and compare them to classical models.
-
-
+This repository provides a clean, reproducible benchmarking pipeline comparing classical Support Vector Machines (SVM) to Quantum Support Vector Machines (QSVM) using Qiskit Machine Learning. The project is designed for teaching and research environments where students explore when quantum models help, when they fail, and how preprocessing affects performance.
 
 ---
 
+## 📦 Pipeline Overview
 
+The project includes:
 
-\## 🧠 Why This Course?
-
-
-
-\- Learn to simulate noisy quantum circuits using Qiskit Aer
-
-\- Build hybrid QML models using Qiskit Machine Learning
-
-\- Compare quantum and classical classifiers on real datasets
-
-\- Stay within free-tier compute (Azure, Colab) — no hardware submission required
-
-
+- **Classical SVM baselines** (Parity datasets and Breast Cancer dataset)
+- **Quantum SVM experiments** using Qiskit’s Sampler-based `QSVC`
+- **PCA and non-PCA comparisons** to demonstrate feasibility limits
+- **Unified logging** to `results.csv`
+- **Reproducible plots** saved to the `plots/` directory
+- **Clear separation** between student-facing code and instructor-only assets
 
 ---
 
+## 🎯 Project Goals
 
+- Demonstrate the strengths and weaknesses of QSVMs on real datasets
+- Show how PCA affects quantum kernel feasibility
+- Provide a transparent, reproducible benchmark pipeline for students
+- Stay fully simulator-based to avoid hardware costs or queue delays
 
-\## 🧰 Environment Setup
+---
 
+## 📁 Repository Structure
 
+```text
+src/
+├── phase1/        # Classical SVM experiments
+├── phase2/        # QSVM experiments on Parity datasets
+├── phase3/        # QSVM experiments on Breast Cancer dataset
+└── utils/         # Shared loaders, loggers, visualizers, and dataset tools
 
-This course uses Qiskit V1 to ensure compatibility with realistic noise modeling and hybrid QML tools.
+config/            # YAML configuration files for dataset selection
+data/              # Public datasets used by the pipeline
+plots/             # Generated visualizations (ignored in .gitignore)
+results.csv        # Logged experiment results (ignored in .gitignore)
+instructor_only/   # Private instructor assets (ignored in .gitignore)
+```
 
+---
 
+## ▶️ Running Experiments
 
-\### Local Setup (Windows)
-
-
+Each experiment is executed as a Python module:
 
 ```bash
+python -m src.phase1.SVM_Parity
+python -m src.phase2.QSVM_Parity
+python -m src.phase1.SVM_BreastCancer
+python -m src.phase1.SVM_BreastCancer_PCA
+python -m src.phase3.QSVM_BreastCancer
+python -m src.phase3.QSVM_BreastCancer_PCA
+```
 
-\# Clone this repo
+---
 
-git clone https://github.com/your-username/qiskit-ml-course.git
+## 🛠️ Environment Setup (Windows)
 
-cd qiskit-ml-course
+**1. Clone the repository:**
+```powershell
+git clone [https://github.com/your-username/qiskitdev.git](https://github.com/your-username/qiskitdev.git)
+cd qiskitdev
+```
 
-
-
-\# Create and activate virtual environment
-
+**2. Create and activate a virtual environment:**
+```powershell
 python -m venv .venv
+.venv\Scripts\activate
+```
 
-.venv\\Scripts\\activate
-
-
-
-\# Install dependencies
-
+**3. Install dependencies:**
+```powershell
 pip install -r requirements.txt
+```
 
+---
+
+## 🎓 Key Learning Outcomes
+
+- Understand why QSVMs fail on high-dimensional data
+- Observe how PCA enables QSVM feasibility (but not necessarily accuracy)
+- Compare classical and quantum models on equal footing
+- Learn reproducible ML/QML experiment design
+
+---
+
+*This repository is intended for educational use and is fully simulator-based. **No quantum hardware access is required.***

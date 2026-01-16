@@ -8,6 +8,8 @@ import numpy as np
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+from datetime import datetime, timezone
+
 
 # Ensure src/ is in sys.path for root-level execution
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -69,4 +71,13 @@ for k, v in metrics.items():
 # -------------------------------
 # 5. Visualize decision boundary
 # -------------------------------
-plot_projected_decision_boundary(model, X_test, y_test, title="Classical SVM Parity (PCA Projection)")
+timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_pca_projection_{timestamp}.png"
+
+plot_projected_decision_boundary(
+    model,
+    X_test,
+    y_test,
+    title="Classical SVM Parity (PCA Projection)",
+    filename=plot_filename
+)
