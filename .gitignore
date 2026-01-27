@@ -9,9 +9,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Instructor-only materials
-instructor_only/
-
 # Local results and plots
 plots/
 

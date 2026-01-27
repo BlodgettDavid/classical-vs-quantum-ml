@@ -34,7 +34,6 @@ config/     YAML configuration for dataset selection
 data/       Public datasets (parity and breast cancer)
 plots/      Auto-generated plots (ignored by git)
 results.csv Logged experiment results
-instructor_only/ Private instructor materials (ignored by git)
 \`\`\`
 
 ---
