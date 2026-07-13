@@ -9,12 +9,25 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Local results and plots
-plots/
-
 # Logs
 logs/
 *.log
 
 # Environment variables
 .env
+
+# Jupyter checkpoints and scratch notebooks
+.ipynb_checkpoints/
+Untitled.ipynb
+
+# Build artifacts (future-proofing)
+build/
+dist/
+*.egg-info/
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# Personal notes (keep private)
+docs/notes_scratch.txt
