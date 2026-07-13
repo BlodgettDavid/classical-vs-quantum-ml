@@ -7,7 +7,8 @@ def _repo_root_from_utils() -> str:
     # utils/ lives at src/utils/, so root is two levels up
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-def log_results(metrics: dict, filename: str = "results.csv") -> str:
+#def log_results(metrics: dict, filename: str = "results.csv") -> str:
+def log_results(metrics: dict, filename: str = "results/results.csv") -> str:
     """
     Append metrics to a single CSV at the repo root.
     Returns the absolute path to the written file.
