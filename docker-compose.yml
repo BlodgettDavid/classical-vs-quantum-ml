@@ -1,9 +1,9 @@
 services:
   jupyter:
-    build: ./docker
+    build: .
     volumes:
       - ./results:/app/results
       - ./plots:/app/plots
     ports:
       - "8888:8888"
-    command: jupyter lab --ip=0.0.0.0 --no-browser --allow-root
+    command: jupyter lab --ip=0.0.0.0 --no-browser --allow-root  
