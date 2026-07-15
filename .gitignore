@@ -6,8 +6,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Logs
-logs/
+# Logs (ignore any .log files globally)
 *.log
 
 # Environment variables
@@ -16,6 +15,7 @@ logs/
 # Jupyter checkpoints and scratch notebooks
 .ipynb_checkpoints/
 Untitled.ipynb
+scratch*.ipynb
 
 # Build artifacts (future-proofing)
 build/
@@ -28,3 +28,18 @@ dist/
 
 # Personal notes (keep private)
 docs/notes_scratch.txt
+# Optional: ignore instructor notes if private
+# docs/Notes.txt
+
+# Keep directories but ignore contents
+plots/*
+!plots/.gitkeep
+results/*
+!results/.gitkeep
+
+# Docker runtime artifacts
+*.pid
+*.sock
+
+# Local virtual environment (precautionary)
+.venv/
