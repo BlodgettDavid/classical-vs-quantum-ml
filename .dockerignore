@@ -1,0 +1,45 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Logs and temp files
+logs/
+*.log
+*.tmp
+*.pid
+*.sock
+
+# Jupyter scratch files
+.ipynb_checkpoints/
+Untitled*.ipynb
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Docker artifacts
+docker-data/
+docker-compose.override.yml
+
+# Results and plots (mounted via docker-compose, not baked into image)
+results/
+plots/
+
+# Docs (keep private, not in image)
+docs/
+
+# Configs and environment files
+*.env
+.env.*

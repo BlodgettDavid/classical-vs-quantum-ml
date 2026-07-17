@@ -1,45 +1,44 @@
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# OS junk
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Jupyter scratch files
+.ipynb_checkpoints/
+Untitled*.ipynb
+
+# OS-specific junk
 .DS_Store
 Thumbs.db
 
-# Logs (ignore any .log files globally)
+# Logs and temp files
 *.log
+*.tmp
+*.pid
+*.sock
 
-# Environment variables
-.env
-
-# Jupyter checkpoints and scratch notebooks
-.ipynb_checkpoints/
-Untitled.ipynb
-scratch*.ipynb
-
-# Build artifacts (future-proofing)
+# Build artifacts
 build/
 dist/
 *.egg-info/
 
-# IDE/editor settings
+# Editor settings
 .vscode/
 .idea/
 
-# Personal notes (keep private)
-docs/notes_scratch.txt
-# Optional: ignore instructor notes if private
-# docs/Notes.txt
+# Environment variables
+.env
+.env.*
 
-# Keep directories but ignore contents
-plots/*
-!plots/.gitkeep
-results/*
+# Results and plots (folders tracked via .gitkeep, contents ignored)
+results/
 !results/.gitkeep
 
-# Docker runtime artifacts
-*.pid
-*.sock
-
-# Local virtual environment (precautionary)
-.venv/
+plots/
+!plots/.gitkeep
