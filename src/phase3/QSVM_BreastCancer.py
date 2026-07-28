@@ -1,3 +1,7 @@
+
+
+
+
 # QSVM_BreastCancer.py
 # Phase 3: Quantum SVM benchmark on breast cancer dataset
 
@@ -21,6 +25,13 @@ from utils.data_loader import load_dataset_from_config   # unified loader
 
 # Qiskit imports
 from qiskit_machine_learning.algorithms import QSVC
+#db: added because we are going to specify 
+#a kernel to use so that we avoid the
+#default SamplerV1 kernel  and hopefully
+#things speed up
+from qiskit.circuit.library import ZZFeatureMap
+from qiskit_machine_learning.kernels import FidelityQuantumKernel
+
 
 # -------------------------------
 # 1. Load dataset (via config)
@@ -43,20 +54,34 @@ X_test = scaler.transform(X_test)
 # 3. Setup QSVM
 # -------------------------------
 # QSVC builds its own kernel internally in v0.8.4
-qsvc = QSVC()
+
+#db: added because we are going to specify 
+#a kernel to use so that we avoid the
+#default SamplerV1 kernel  and hopefully
+#things speed up
+feature_map = ZZFeatureMap(feature_dimension=X_train.shape[1], reps=1)
+print("after feature map")
+quantum_kernel = FidelityQuantumKernel(feature_map=feature_map)
+print("after quantum_kernel")
+qsvc = QSVC(quantum_kernel=quantum_kernel)
+print("after qsvc")
+#qsvc = QSVC()
 
 # -------------------------------
 # 4. Train QSVM
 # -------------------------------
 start = time.time()
 qsvc.fit(X_train, y_train)
+print("after qsvc.fit")
 training_time = round(time.time() - start, 4)
 
 # -------------------------------
 # 5. Evaluate
 # -------------------------------
 y_train_pred = qsvc.predict(X_train)
+print("after qsvc qsvc.predict y on train data")
 y_test_pred = qsvc.predict(X_test)
+print("after qsvc qsvc.predict y on test data")
 
 train_accuracy = accuracy_score(y_train, y_train_pred)
 test_accuracy = accuracy_score(y_test, y_test_pred)
