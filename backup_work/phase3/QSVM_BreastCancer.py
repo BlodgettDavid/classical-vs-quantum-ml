@@ -1,12 +1,14 @@
-# SVM_BreastCancer.py
-# Phase 1: Classical SVM benchmark on breast cancer dataset
+
+
+
+
+# QSVM_BreastCancer.py
+# Phase 3: Quantum SVM benchmark on breast cancer dataset
 
 import sys
 import os
 import time
 import numpy as np
-import pandas as pd
-from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -19,14 +21,23 @@ sys.path.append(os.path.abspath(SRC_PATH))
 # Modular imports
 from utils.logger import log_results
 from utils.visualizer import plot_projected_decision_boundary
+from utils.data_loader import load_dataset_from_config   # unified loader
+
+# Qiskit imports
+from qiskit_machine_learning.algorithms import QSVC
+#db: added because we are going to specify 
+#a kernel to use so that we avoid the
+#default SamplerV1 kernel  and hopefully
+#things speed up
+from qiskit.circuit.library import ZZFeatureMap
+from qiskit_machine_learning.kernels import FidelityQuantumKernel
+
 
 # -------------------------------
-# 1. Load dataset (direct CSV read)
+# 1. Load dataset (via config)
 # -------------------------------
-DATA_DIR = os.path.join(ROOT_DIR, "..", "..", "data")
-df = pd.read_csv(os.path.join(DATA_DIR, "breast_cancer.csv"))
+df, cfg = load_dataset_from_config()
 
-# Assume last column is target, rest are features
 X = df.drop(columns=["target"]).values
 y = df["target"].values
 
@@ -40,27 +51,45 @@ X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 # -------------------------------
-# 3. Train classical SVM (linear kernel)
+# 3. Setup QSVM
 # -------------------------------
-model = SVC(kernel="linear")
+# QSVC builds its own kernel internally in v0.8.4
 
+#db: added because we are going to specify 
+#a kernel to use so that we avoid the
+#default SamplerV1 kernel  and hopefully
+#things speed up
+feature_map = ZZFeatureMap(feature_dimension=X_train.shape[1], reps=1)
+print("after feature map")
+quantum_kernel = FidelityQuantumKernel(feature_map=feature_map)
+print("after quantum_kernel")
+qsvc = QSVC(quantum_kernel=quantum_kernel)
+print("after qsvc")
+#qsvc = QSVC()
+
+# -------------------------------
+# 4. Train QSVM
+# -------------------------------
 start = time.time()
-model.fit(X_train, y_train)
+qsvc.fit(X_train, y_train)
+print("after qsvc.fit")
 training_time = round(time.time() - start, 4)
 
 # -------------------------------
-# 4. Evaluate
+# 5. Evaluate
 # -------------------------------
-y_train_pred = model.predict(X_train)
-y_test_pred = model.predict(X_test)
+y_train_pred = qsvc.predict(X_train)
+print("after qsvc qsvc.predict y on train data")
+y_test_pred = qsvc.predict(X_test)
+print("after qsvc qsvc.predict y on test data")
 
 train_accuracy = accuracy_score(y_train, y_train_pred)
 test_accuracy = accuracy_score(y_test, y_test_pred)
 generalization_gap = round(train_accuracy - test_accuracy, 4)
 
 metrics = {
-    "model": "SVM_BreastCancer",
-    "dataset": "breast_cancer",   # hard-coded, no config
+    "model": "QSVM_BreastCancer",
+    "dataset": cfg["dataset"],   # use dataset name from config
     "accuracy": test_accuracy,
     "train_accuracy": train_accuracy,
     "generalization_gap": generalization_gap,
@@ -68,11 +97,11 @@ metrics = {
 }
 log_results(metrics)
 
-print("\n=== Classical SVM Breast Cancer Results ===")
+print("\n=== QSVM Breast Cancer Results ===")
 for k, v in metrics.items():
     print(f"{k}: {v}")
 
 # -------------------------------
-# 5. Visualize decision boundary
+# 6. Visualize decision boundary
 # -------------------------------
-plot_projected_decision_boundary(model, X_test, y_test, title="Classical SVM Breast Cancer (PCA Projection)")
+plot_projected_decision_boundary(qsvc, X_test, y_test, title="QSVM Breast Cancer (PCA Projection)")

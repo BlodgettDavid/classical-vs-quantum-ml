@@ -5,8 +5,6 @@
 # Options: breast_cancer, parity4d, parity4d_stressed, parity6d, parity6d_stressed
 # -----------------------------------------------
 
-#should see this commment in Jupyterlab
-
 import sys
 import os
 import time
