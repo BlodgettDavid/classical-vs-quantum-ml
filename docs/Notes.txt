@@ -1,3 +1,198 @@
+jupytext --to py QSVM_Parity.ipynb --output QSVM_Parity_export.py
+******************************************
+
+
+Host prompt → controls Docker, can copy files in/out of containers.
+Container prompt → only manipulates files inside the container, no Docker commands.
+What docker exec does
+Exec into container → It lets you run a command inside a running container, without starting a new one.
+Acts like a remote shell → You’re still at your Windows host prompt, but Docker passes the command through to the container’s Linux environment.
+
+Examples:
+docker exec -it <id> bash → opens an interactive shell inside the container.
+docker exec -it <id> ls /app/src → lists files inside /app/src in the container.
+docker exec -it <id> python script.py → runs Python inside the container.
+
+🔹 Key distinction
+Host prompt → runs Docker CLI commands (docker ps, docker cp, docker exec).
+Container shell → runs Linux commands (ls, python, cat) once you’re inside.
+docker exec is the bridge: it lets you issue Linux commands against the container’s filesystem from the host.
+
+
+What mounts solve
+a) Consistency of file changes
+With a bind mount, the container and host are literally sharing the same directory.
+Any edit made inside JupyterLab (container) is instantly reflected on the host filesystem.
+Any edit made on the host (e.g., VS Code, Notepad) is instantly reflected inside the container.
+
+b) Persistence across new containers
+When you rebuild or recreate containers, the container’s writable layer is discarded.
+But with mounts, the host directory is the “source of truth.”
+The new container re‑attaches to the same host folder, so all prior edits are preserved.
+
+🎯 Clean takeaway
+Mounts are the single mechanism that guarantees both:
+Live reflection of changes between container ↔ host.
+Persistence of those changes across container rebuilds.
+
+
+Next steps for understanding
+1) How to do mounts
+2) Make sure that the host system files always
+reflect that of the container		
+		
+
+docker-compose build
+	Note: Only need to run if one of the below files 
+	has changed
+	Reads:
+		docker-compose.yml
+		Dockerfile
+		context files (e.g. requirements.txt)
+	Produces images.
+
+docker-compose up 
+	Reads:
+		docker-compose.yml
+		images 
+	Produces/runs containers
+Or, to do both at the same time, do:
+docker-compose up --build
+
+
+
+docker ps -> gives the container id
+docker stop <container id>
+docker-compose down
+
+
+
+BIG NOTE:
+The only time student changes persist is when they keep using the same container and follow the stop → start cycle.
+	SOLUTION: USE MOUNTS
+	
+	“If we persist our files (and their changes) in the container to the host system — even though that’s not the default behavior — does that alleviate the need to do mounts? Do you see why I might be thinking this?”
+		🔹 The Answer
+		Yes, in theory: If container changes are automatically persisted to the host filesystem, then you wouldn’t strictly need mounts, because the host already holds the “source of truth.”
+
+		But in practice: Mounts are still the standard because they make persistence explicit, safe, and portable.
+	
+stop a container 
+	note: 
+		Stopping ≠ deleting. 
+		Edits survive normal quits/restarts.
+	jupyterlab is gracefully shut down
+	
+	docker-compose stop
+		-stops all containers
+	or do:
+		docker ps
+		docker stop <container_id>
+
+		Stops one specific container by ID or name.
+			➝ Useful if they only want to halt JupyterLab but keep other services running.
+
+removing a container
+	
+	docker ps
+	docker rm <container_id>
+
+	docker-compose down
+
+
+*******************************************************************************
+* feature/notebook-conversion
+    TASK:
+    1) Plots
+    2) Results
+    Need to keep a history of files for each folder
+      Note: It looks like src/phase1/svm_parity.ipynb does respect previous runs
+
+    Testing each of the following w/new container
+      -src/phase1/ (DONE)
+      -src/phase2/ (only tested for parity4d.csv)
+      -src/phase3/
+    
+
+    Note: 
+      We assume this just doesn't complete ... which actually shows that without PCA done,
+      then this is the ultimate quantum disadvantage
+      src/phase3/QSVM_BreastCancer.py
+
+
+
+*******************************************************************************
+DOCKER COMMANDS
+
+docker-compose build → Build images only.
+docker-compose up → Start containers (and build if needed).
+http://localhost:8888/lab
+  Remember, right now we don't have a token in effect
+
+
+One of 2 techniques
+1) jupytext --to py src/phase2/QSVM_Parity.ipynb
+2) Pairing Concept -> this is preferred
+have notebook opened
+file->juyptext->pair notebook with light text
+  How to remove pairing metadata
+  If you want the notebook to stop being paired:
+  Open the notebook in JupyterLab.
+  Go to File → Jupytext → Unpair Notebook.
+
+
+Running a command from the container shell
+(Note: General rule, we want to run the paired python
+file in the container shell becauuse that matches the env. that the notebook runs in)
+  Not in the container shell
+    -be in the project root
+    How to enter the container shell
+      -docker-compose exec jupyter bash
+    then enter: python src/phase2/QSVM_Parity.py
+
+  In the container shell
+    -docker-compose exec jupyter python src/phase2/QSVM_Parity.py
+
+
+Q: 4.6.2 jupyter .. should we use it?
+Current vs. new version
+Your current version: JupyterLab 4.2.5
+Stable, widely used, and already proven to work with your pinned stack (qiskit==1.4.5, jupytext==1.19.4, etc.).
+You’ve confirmed the Pair Notebook with Light Format option works, and your container builds cleanly.
+
+New version: JupyterLab 4.6.2
+Adds incremental features and bug fixes.
+But: upgrading can break compatibility with pinned extensions (like Jupytext, ipywidgets, or nbextensions).
+If you upgrade, you’d need to re‑test the whole environment to ensure students don’t hit UI or extension issues.
+**************************************************************************
+🔹 Script mode (python file.py)
+Context: Python thinks the file is standalone.
+Imports:
+Absolute imports work only if you start from the project root.
+Relative imports (..utils) usually fail.
+Use case: Quick execution, but fragile if someone runs from the wrong directory.
+
+🔹 Module mode (python -m package.module)
+Context: Python enforces the package hierarchy.
+Imports:
+Absolute imports (from src.utils.logger import log_results) work.
+Relative imports (from ..utils.logger import log_results) also work.
+Use case: Robust, package‑aware execution. Preferred in structured projects.
+
+🔹 Notebook mode (Jupyter)
+Context: Kernel starts in the notebook’s folder (e.g., /app/src/phase2).
+Imports:
+Absolute imports often fail because the kernel doesn’t know about the project root.
+Relative imports fail because notebooks aren’t run as modules.
+Developers patch sys.path manually to make imports work.
+Use case: Interactive exploration, but requires hacks for clean imports.
+
+🎯 Clean takeaway
+Module mode is the only context where relative imports work naturally without sys.path hacks.
+Absolute imports are fine if you always start from the root, but they’re brittle in notebooks or non‑root execution.
+That’s why packages and context feel nuanced: each execution mode has slightly different rules about how imports resolve.
+*******************************************************************************
+
 Short version: **Yes — it’s totally fine for students.**  
 Disabling the Jupyter token in a *local‑only teaching container* is normal, safe, and actually *preferred* because it removes friction.
 
@@ -69,13 +264,6 @@ and is standard practice in teaching environments.
 ```
 
 If you want, I can also show you how to **optionally enable a password** later if you ever need a more secure mode for shared machines.
-
-
-
-
-
-
-
 
 
 *************************************************************

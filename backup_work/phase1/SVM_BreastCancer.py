@@ -5,7 +5,6 @@ import sys
 import os
 import time
 import numpy as np
-import pandas as pd
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
@@ -19,12 +18,12 @@ sys.path.append(os.path.abspath(SRC_PATH))
 # Modular imports
 from utils.logger import log_results
 from utils.visualizer import plot_projected_decision_boundary
+from utils.data_loader import load_dataset_from_config   # NEW unified loader
 
 # -------------------------------
-# 1. Load dataset (direct CSV read)
+# 1. Load dataset (via config)
 # -------------------------------
-DATA_DIR = os.path.join(ROOT_DIR, "..", "..", "data")
-df = pd.read_csv(os.path.join(DATA_DIR, "breast_cancer.csv"))
+df, cfg = load_dataset_from_config()
 
 # Assume last column is target, rest are features
 X = df.drop(columns=["target"]).values
@@ -60,7 +59,7 @@ generalization_gap = round(train_accuracy - test_accuracy, 4)
 
 metrics = {
     "model": "SVM_BreastCancer",
-    "dataset": "breast_cancer",   # hard-coded, no config
+    "dataset": cfg["dataset"],   # use dataset name from config
     "accuracy": test_accuracy,
     "train_accuracy": train_accuracy,
     "generalization_gap": generalization_gap,
