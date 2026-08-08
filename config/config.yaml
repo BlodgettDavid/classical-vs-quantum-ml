@@ -5,7 +5,7 @@
 
 # Dataset choice (must match a key in data_loader.py mapping)
 # Options: breast_cancer, parity4d, parity4d_stressed, parity6d, parity6d_stressed
-dataset: parity4d
+dataset: parity6d_stressed
 
 # Classical SVM hyperparameters
 svm:
