@@ -1,4 +1,4 @@
-# utils/visualizer.py
+# utils/classical_visualizer.py
 import os
 import numpy as np
 import matplotlib.pyplot as plt

@@ -1,18 +1,15 @@
 # SVM_BreastCancer.py
 # Phase 1: Classical SVM benchmark on breast cancer dataset
 
-import sys
-import os
-import time
-from datetime import datetime
+import sys, os
 import pandas as pd
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from datetime import datetime, timezone
 
 # -------------------------------
-# 0. Setup paths + imports
+# Setup paths
 # -------------------------------
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 SRC_PATH = os.path.join(ROOT_DIR, "..", "..", "src")
@@ -20,64 +17,66 @@ sys.path.append(os.path.abspath(SRC_PATH))
 
 from utils.logger import log_results
 from utils.classical_visualizer import plot_projected_decision_boundary
+from utils.classical_evaluator import evaluate_model
+from utils.config_loader import load_config
 
 # -------------------------------
-# 1. Load dataset (direct CSV read)
+# Load parameters from config
+# -------------------------------
+cfg = load_config()
+dataset = cfg["dataset"]
+
+# Global controls
+split_ratio = cfg["global"]["split_ratio"]
+random_state = cfg["global"]["random_state"]
+
+# Classical SVM hyperparameters
+kernel = cfg["svm"]["kernel"]
+C = cfg["svm"]["C"]
+gamma = cfg["svm"]["gamma"]
+degree = cfg["svm"].get("degree", 3)
+
+# -------------------------------
+# Load dataset
 # -------------------------------
 DATA_DIR = os.path.join(ROOT_DIR, "..", "..", "data")
-df = pd.read_csv(os.path.join(DATA_DIR, "breast_cancer.csv"))
-
+df = pd.read_csv(os.path.join(DATA_DIR, f"{dataset}.csv"))
 X = df.drop(columns=["target"]).values
 y = df["target"].values
 
 # -------------------------------
-# 2. Train/test split + scaling
+# Train/test split + scaling
 # -------------------------------
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=42
+    X, y, test_size=split_ratio, random_state=random_state
 )
-
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 # -------------------------------
-# 3. Train classical SVM
+# Train classical SVM
 # -------------------------------
-kernel = "sigmoid"   # change here if you want rbf, poly, etc.
-model = SVC(kernel=kernel)
-
-start = time.time()
-model.fit(X_train, y_train)
-training_time = round(time.time() - start, 4)
+if kernel == "poly":
+    model = SVC(kernel=kernel, C=C, gamma=gamma, degree=degree)
+else:
+    model = SVC(kernel=kernel, C=C, gamma=gamma)
 
 # -------------------------------
-# 4. Evaluate
+# Evaluate
 # -------------------------------
-y_train_pred = model.predict(X_train)
-y_test_pred = model.predict(X_test)
+metrics = evaluate_model(model, X_train, y_train, X_test, y_test, label="SVM_BreastCancer")
 
-train_accuracy = accuracy_score(y_train, y_train_pred)
-test_accuracy = accuracy_score(y_test, y_test_pred)
-generalization_gap = round(train_accuracy - test_accuracy, 4)
+# Always log all 8 reproducibility parameters
+metrics["dataset"] = dataset
+metrics["split_ratio"] = split_ratio
+metrics["random_state"] = random_state
+metrics["kernel"] = kernel
+metrics["C"] = C
+metrics["gamma"] = gamma
+metrics["degree"] = degree if kernel == "poly" else 0
+metrics["pca_components"] = 0  # always 0 for non-PCA scripts
 
-# Generate timestamp for logging + plots
-timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%SZ")
-
-metrics = {
-    "model": "SVM_BreastCancer",
-    "dataset": "breast_cancer",
-    "kernel": kernel,
-    "accuracy": test_accuracy,
-    "train_accuracy": train_accuracy,
-    "generalization_gap": generalization_gap,
-    "training_time": training_time,
-    "timestamp": timestamp
-}
-
-# -------------------------------
-# 4b. Log + print results
-# -------------------------------
 log_results(metrics)
 
 print("\n=== Classical SVM Breast Cancer Results ===")
@@ -85,16 +84,12 @@ for k, v in metrics.items():
     print(f"{k}: {v}")
 
 # -------------------------------
-# 5. Visualize decision boundary
+# Visualize
 # -------------------------------
-plot_filename = f"SVM_BreastCancer_{kernel}_{timestamp}.png"
-plot_path = os.path.join(ROOT_DIR, "..", "..", "plots", plot_filename)
-
+timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{metrics['kernel']}_{timestamp}.png"
 plot_projected_decision_boundary(
-    model,
-    X_test,
-    y_test,
-    title=f"Classical SVM Breast Cancer ({kernel} kernel, PCA Projection)",
-    filename=plot_path,
-    surrogate_kernel=kernel   # pass kernel explicitly
+    model, X_test, y_test,
+    title=f"Classical SVM Breast Cancer ({dataset}, {kernel} kernel)",
+    filename=plot_filename
 )

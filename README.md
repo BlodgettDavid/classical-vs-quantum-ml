@@ -98,4 +98,49 @@ python -m src.phase3.QSVM_BreastCancer_PCA
 
 ---
 
+
+## ⚙️ Config-driven Experiments
+
+All experiments are controlled by `config/config.yaml`. This file specifies:
+- Dataset choice (parity or breast cancer)
+- Global controls (train/test split, random_state, PCA components)
+- Classical SVM hyperparameters
+- Quantum SVM hyperparameters (feature map, reps, entanglement, backend)
+
+This ensures reproducibility and makes it easy to switch between experiments.
+
+---
+
+## 🧩 Evaluators
+
+The old `evaluator.py` has been split into:
+- `utils/classical_evaluator.py` → metrics for classical SVM
+- `utils/quantum_evaluator.py` → metrics for QSVM
+
+Both feed into `utils/logger.py` to produce consistent rows in `results.csv`.
+
+---
+
+## 📊 Results Logging
+
+Every run writes a complete row to `results/results.csv`, including:
+- Dataset, split ratio, random state
+- Classical or quantum hyperparameters
+- PCA components (0 if not used)
+- Accuracy, precision, recall, F1
+- Runtime and resource usage
+
+---
+
+## 🧪 Phase 3: Breast Cancer Benchmarks
+
+- `QSVM_BreastCancer.py` → no PCA, demonstrates **quantum disadvantage**
+- `QSVM_BreastCancer_PCA.py` → PCA applied, demonstrates **quantum feasibility**
+
+---
+
+## 🚀 Roadmap
+
+Upcoming work will extend the project to **Quantum kNN (QkNN)**, forming the basis of the class project.
+
 This project is intended for educational use and is fully simulator-based.
