@@ -5,19 +5,69 @@
 
 # Dataset choice (must match a key in data_loader.py mapping)
 # Options: breast_cancer, parity4d, parity4d_stressed, parity6d, parity6d_stressed
-dataset: parity6d_stressed
+dataset: breast_cancer
+
+# Global dataset controls (apply to both classical and quantum)
+global:
+  split_ratio: 0.3       # 70/30 split for train/test
+  random_state: 42       # configurable seed
+  pca_components: 2      # number of principal components to keep
 
 # Classical SVM hyperparameters
 svm:
-  kernel: linear   # options: linear, rbf, poly, sigmoid
-  C: 1.0           # regularization strength
-  gamma: scale     # kernel coefficient (scale, auto, or float)
+  kernel: poly           # options: linear, rbf, poly, sigmoid
+  C: 1.0                 # regularization strength
+  gamma: scale           # kernel coefficient (scale, auto, or float)
+  degree: 3              # ignored unless kernel=poly
 
-# PCA settings (used in *_PCA scripts)
-pca:
-  n_components: 4  # number of principal components to keep
+# Quantum SVM hyperparameters
+qsvm:
+  feature_map: ZZFeatureMap   # options: ZZFeatureMap, PauliFeatureMap, etc.
+  reps: 1                     # number of repetitions
+  entanglement: linear        # entanglement strategy
+  backend: qasm_simulator     # simulator only (Azure free-tier); hardware submission disabled
 
-# Notes:
-# - QSVM scripts ignore svm hyperparameters (QSVC builds its own kernel internally).
-# - Switch dataset here to run different experiments without touching scripts.
-# - PCA block is optional; only PCA scripts use it.
+
+# Notes on random_state
+# What random_state does:
+# - It's the seed for the random number generator used in train/test splitting
+#   (and sometimes in PCA or other randomized algorithms).
+# - Setting it ensures reproducibility: you'll get the same train/test split
+#   every time you rerun the script.
+# - If you change it, the split changes - different samples go into train vs test,
+#   which can slightly alter metrics.
+#
+# Why a user might change it:
+# - Reproducibility vs exploration:
+#   Keep it fixed (e.g., 42) when you want consistent results across runs.
+#   Change it when you want to test robustness of your model across different splits.
+# - Stress testing:
+#   For tricky datasets like parity4d, you might run multiple seeds to see if
+#   performance is stable or highly variable.
+#   If accuracy swings wildly between seeds, that's a sign the model is fragile.
+# - Benchmarking fairness:
+#   In teaching, you can demonstrate how results depend on the split.
+#   Example: run with random_state=42, then random_state=7, and compare metrics.
+#
+# Best practice:
+# - Default to 42 for reproducibility.
+# - Document in config.yaml that changing it alters the train/test split.
+# - For experiments, run multiple seeds and average results to get a more reliable benchmark.
+#
+# Clean takeaway:
+# random_state is like a "dice roll" for how your dataset is split.
+# - Keep it fixed for reproducibility.
+# - Change it when you want to explore variability or stress-test your model.
+# - In teaching, it's a great way to show students why reproducibility matters
+#   and how randomness affects results.
+
+#Common entanglement strategies
+#linear → Each qubit entangles only with its neighbor (like a chain).
+
+#full → Every qubit entangles with every other qubit (dense connectivity).
+
+#circular → Like linear, but the last qubit also connects back to the first (a ring).
+
+#sca (stochastic controlled adjacency) → Randomized entanglement patterns, useful for stress testing.
+
+#Custom list → You can explicitly pass a list of qubit pairs, e.g. [[0,1],[1,2]], to define your own entanglement graph.
