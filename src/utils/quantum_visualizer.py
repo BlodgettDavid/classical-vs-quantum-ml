@@ -1,6 +1,8 @@
 # quantum_visualizer.py
 import os
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")   # non-interactive backend, safe for batch runs
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -68,13 +70,7 @@ def plot_qsvm_decision_boundary(
 
         plt.savefig(saved_path, dpi=120)
         print(f"[quantum_visualizer] saved plot to: {saved_path}")
-
-    if show:
-        plt.show()
-    else:
-        plt.close()
-
-    return saved_path
+        plt.close()   # always close, never show
 
 
 def plot_quantum_kernel_matrix(
@@ -105,10 +101,4 @@ def plot_quantum_kernel_matrix(
 
         plt.savefig(saved_path, dpi=120)
         print(f"[quantum_visualizer] saved kernel matrix to: {saved_path}")
-
-    if show:
-        plt.show()
-    else:
-        plt.close()
-
-    return saved_path
+        plt.close()   # always close, never show
