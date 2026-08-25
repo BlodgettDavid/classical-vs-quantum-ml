@@ -139,6 +139,15 @@ Every run writes a complete row to `results/results.csv`, including:
 
 ---
 
+
+## Docs Folder
+
+The `docs` directory is included in the repository with a `.gitkeep` file to preserve
+the folder structure. This ensures documentation can be added in the future without
+reintroducing sensitive files that were previously removed from history.
+
+---
+
 ## 🚀 Roadmap
 
 Upcoming work will extend the project to **Quantum kNN (QkNN)**, forming the basis of the class project.
