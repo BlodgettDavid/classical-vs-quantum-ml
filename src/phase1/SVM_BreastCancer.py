@@ -16,7 +16,10 @@ SRC_PATH = os.path.join(ROOT_DIR, "..", "..", "src")
 sys.path.append(os.path.abspath(SRC_PATH))
 
 from utils.logger import log_results
-from utils.classical_visualizer import plot_projected_decision_boundary
+from utils.classical_visualizer import (
+    plot_projected_decision_boundary,
+    plot_confusion_matrix
+)
 from utils.classical_evaluator import evaluate_model
 from utils.config_loader import load_config
 
@@ -67,7 +70,7 @@ else:
 # -------------------------------
 metrics = evaluate_model(model, X_train, y_train, X_test, y_test, label="SVM_BreastCancer")
 
-# Always log all 8 reproducibility parameters
+# Always log reproducibility parameters
 metrics["dataset"] = dataset
 metrics["split_ratio"] = split_ratio
 metrics["random_state"] = random_state
@@ -87,9 +90,27 @@ for k, v in metrics.items():
 # Visualize
 # -------------------------------
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{metrics['kernel']}_{timestamp}.png"
+# Decision boundary
+boundary_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_{timestamp}.png"
 plot_projected_decision_boundary(
-    model, X_test, y_test,
+    X_test, 
+    y_test,
     title=f"Classical SVM Breast Cancer ({dataset}, {kernel} kernel)",
-    filename=plot_filename
+    save=True,       # always save plots for reproducibility
+    show=False,      # disable interactive popup for batch runs
+    filename=boundary_filename,
+    surrogate_kernel=kernel,
+    do_pca=True
+)
+
+# Confusion matrix
+y_pred = model.predict(X_test)
+cm_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_cm_{timestamp}.png"
+plot_confusion_matrix(
+    y_test, 
+    y_pred,
+    title=f"Confusion Matrix ({dataset}, {kernel} kernel)",
+    save=True,
+    show=False,
+    filename=cm_filename
 )

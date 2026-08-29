@@ -4,7 +4,7 @@
 # -------------------------------------------------
 
 # Dataset choice (must match a key in data_loader.py mapping)
-# Options: breast_cancer, parity4d, parity4d_stressed, parity6d, parity6d_stressed
+# Options: breast_cancer, parity3d, parity4d, parity4d_stressed, parity6d, parity6d_stressed
 dataset: breast_cancer
 
 # Global dataset controls (apply to both classical and quantum)

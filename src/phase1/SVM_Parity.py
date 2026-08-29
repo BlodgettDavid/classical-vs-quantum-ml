@@ -15,7 +15,10 @@ SRC_PATH = os.path.join(ROOT_DIR, "..", "..", "src")
 sys.path.append(os.path.abspath(SRC_PATH))
 
 from utils.logger import log_results
-from utils.classical_visualizer import plot_projected_decision_boundary
+from utils.classical_visualizer import (
+    plot_projected_decision_boundary,
+    plot_confusion_matrix
+)
 from utils.config_loader import load_config
 from utils.classical_evaluator import evaluate_model
 
@@ -74,9 +77,28 @@ for k, v in metrics.items():
 # Visualize
 # -------------------------------
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_{timestamp}.png"
+# Decision boundary
+boundary_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_{timestamp}.png"
+
 plot_projected_decision_boundary(
-    model, X_test, y_test,
+    X_test, 
+    y_test,
     title=f"Classical SVM Parity ({dataset}, {kernel} kernel)",
-    filename=plot_filename
+    save=True,       # always save plots for reproducibility
+    show=False,      # disable interactive popup for batch runs
+    filename=boundary_filename,
+    surrogate_kernel=kernel,  # mirror the kernel choice
+    do_pca=True      # parity dataset needs PCA in visualization
+)
+
+# Confusion matrix
+y_pred = model.predict(X_test)
+cm_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_cm_{timestamp}.png"
+plot_confusion_matrix(
+    y_test, 
+    y_pred,
+    title=f"Confusion Matrix ({dataset}, {kernel} kernel)",
+    save=True,       # always save plots for reproducibility
+    show=False,      # disable interactive popup for batch runs
+    filename=cm_filename
 )

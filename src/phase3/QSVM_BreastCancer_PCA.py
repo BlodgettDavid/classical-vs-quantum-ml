@@ -110,24 +110,42 @@ for k, v in metrics.items():
 # -------------------------------
 # 7. Visualization (optional)
 # -------------------------------
-'''
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
 
-plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{feature_map_name.lower()}_{timestamp}.png"
-plot_qsvm_decision_boundary(
-    qsvc, X_test, y_test,
-    title=f"QSVM Breast Cancer PCA ({pca_components} comps, {feature_map_name})",
-    filename=plot_filename
+# --- Decision Boundary ---
+plot_filename = (
+    f"{metrics['model'].lower()}_"
+    f"{metrics['dataset']}_"
+    f"{feature_map_name.lower()}_"
+    f"{timestamp}.png"
 )
 
+plot_qsvm_decision_boundary(
+    qsvc,
+    X_test,
+    y_test,
+    title=f"QSVM Breast Cancer PCA ({pca_components} comps, {feature_map_name})",
+    filename=plot_filename,
+    do_pca=False,   # PCA already applied in modeling → DO NOT apply again
+    save=True,
+    show=False
+)
+
+# --- Quantum Kernel Matrix ---
 subset_size = min(len(X_test), max(10, int(0.25 * len(X_test))))
 subset = X_test[:subset_size]
 kernel_matrix = quantum_kernel.evaluate(subset)
 
-kernel_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_kernel_{timestamp}.png"
+kernel_filename = (
+    f"{metrics['model'].lower()}_"
+    f"{metrics['dataset']}_kernel_"
+    f"{timestamp}.png"
+)
+
 plot_quantum_kernel_matrix(
     kernel_matrix,
     title=f"Quantum Kernel Matrix PCA ({feature_map_name}, {subset_size} samples)",
-    filename=kernel_filename
+    filename=kernel_filename,
+    save=True,
+    show=False
 )
-'''

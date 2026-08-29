@@ -23,6 +23,8 @@ def dataset_to_filename(name: str) -> str:
     """Map dataset key from config.yaml to actual CSV filename."""
     mapping = {
         "breast_cancer": "breast_cancer.csv",
+        "parity2d": "parity2d.csv",
+        "parity3d": "parity3d.csv",
         "parity4d": "parity4d.csv",
         "parity4d_stressed": "parity4d_stressed.csv",
         "parity6d": "parity6d.csv",

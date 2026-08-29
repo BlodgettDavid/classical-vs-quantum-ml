@@ -17,7 +17,10 @@ SRC_PATH = os.path.join(ROOT_DIR, "..", "..", "src")
 sys.path.append(os.path.abspath(SRC_PATH))
 
 from utils.logger import log_results
-from utils.classical_visualizer import plot_projected_decision_boundary
+from utils.classical_visualizer import (
+    plot_projected_decision_boundary,
+    plot_confusion_matrix
+)
 from utils.classical_evaluator import evaluate_model
 from utils.config_loader import load_config
 
@@ -76,7 +79,7 @@ else:
 # -------------------------------
 metrics = evaluate_model(model, X_train, y_train, X_test, y_test, label="SVM_BreastCancer_PCA")
 
-# Always log all 8 reproducibility parameters
+# Always log reproducibility parameters
 metrics["dataset"] = dataset
 metrics["split_ratio"] = split_ratio
 metrics["random_state"] = random_state
@@ -84,7 +87,7 @@ metrics["kernel"] = kernel
 metrics["C"] = C
 metrics["gamma"] = gamma
 metrics["degree"] = degree if kernel == "poly" else 0
-metrics["pca_components"] = pca_components  # respected here
+metrics["pca_components"] = pca_components
 
 log_results(metrics)
 
@@ -96,9 +99,28 @@ for k, v in metrics.items():
 # Visualize
 # -------------------------------
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{metrics['kernel']}_{timestamp}.png"
+
+# Decision boundary
+boundary_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_{timestamp}.png"
 plot_projected_decision_boundary(
-    model, X_test, y_test,
+    X_test, 
+    y_test,
     title=f"Classical SVM Breast Cancer PCA ({dataset}, {kernel} kernel, {pca_components} components)",
-    filename=plot_filename
+    save=True,       # always save plots for reproducibility
+    show=False,      # disable interactive popup for batch runs
+    filename=boundary_filename,
+    surrogate_kernel=kernel,
+    do_pca=False     # PCA already applied before visualization
+)
+
+# Confusion matrix
+y_pred = model.predict(X_test)
+cm_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{kernel}_cm_{timestamp}.png"
+plot_confusion_matrix(
+    y_test, 
+    y_pred,
+    title=f"Confusion Matrix ({dataset}, {kernel} kernel, {pca_components} components)",
+    save=True,
+    show=False,
+    filename=cm_filename
 )

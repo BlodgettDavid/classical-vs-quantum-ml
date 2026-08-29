@@ -88,16 +88,25 @@ print("\n=== QSVM Parity Results ===")
 for k, v in metrics.items():
     print(f"{k}: {v}")
 
+
 # -------------------------------
 # 5a. Visualize decision boundary
 # -------------------------------
+
 timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+
 plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{feature_map_name.lower()}_{timestamp}.png"
 plot_qsvm_decision_boundary(
-    qsvc, X_test, y_test,
+    qsvc, 
+    X_test, 
+    y_test,
     title=f"QSVM Parity ({metrics['dataset']}, {feature_map_name})",
-    filename=plot_filename
+    save=True,      # always save plots for reproducibility
+    show=False,      # disable interactive popup for batch runs
+    filename=plot_filename,
+    do_pca=True   # Parity dataset needs PCA in visualization
 )
+
 
 # -------------------------------
 # 5b. Visualize quantum kernel matrix
@@ -107,8 +116,11 @@ subset = X_test[:subset_size]
 
 kernel_matrix = quantum_kernel.evaluate(subset)
 kernel_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_kernel_{timestamp}.png"
+
 plot_quantum_kernel_matrix(
     kernel_matrix,
     title=f"Quantum Kernel Matrix ({metrics['dataset']}, {feature_map_name}, {subset_size} samples)",
-    filename=kernel_filename
+    filename=kernel_filename,
+    save=True,      # always save for reproducibility
+    show=False      # disable interactive popup for batch runs
 )

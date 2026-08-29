@@ -20,22 +20,42 @@ def _sanitize_filename(title: str) -> str:
              + ".png"
     )
 
+
+'''
+    Plot QSVM decision scores projected into 2D PCA space with contour lines.
+    If use_pca=True, PCA is applied internally.
+    If use_pca=False, X must already be 2D (e.g., PCA done in modeling).
+
+'''
+
 def plot_qsvm_decision_boundary(
-    qsvc, X, y,
-    title="QSVM Decision Boundary (PCA Projection)",
+    qsvc, 
+    X, 
+    y,
+    title="QSVM Decision Boundary",
     save: bool = True,
     show: bool = True,
-    filename: str = None
+    filename: str = None,
+    do_pca: bool = True
 ) -> str:
-    """
-    Plot QSVM decision scores projected into 2D PCA space with contour lines.
-    Always applies PCA internally for visualization.
-    """
+    
 
-    # 1) PCA projection
-    pca = PCA(n_components=2, random_state=42)
-    X2 = pca.fit_transform(X)
+    # Doing Actual PCA
+    if do_pca:
+        #hard coded to 2 for 2d decison boundary
+        pca = PCA(n_components=2, random_state=42)
+        X2 = pca.fit_transform(X)
+    else:
+        if X.shape[1] != 2:
+            raise ValueError("X must be 2D if use_pca=False")
+        X2 = X
+        # create a dummy PCA object so inverse_transform works
+        class IdentityPCA:
+            def inverse_transform(self, pts):
+                return pts
+        pca = IdentityPCA()
 
+    print("After PCA")
     # 2) Mesh grid in PCA space
     x_min, x_max = X2[:, 0].min() - 0.5, X2[:, 0].max() + 0.5
     y_min, y_max = X2[:, 1].min() - 0.5, X2[:, 1].max() + 0.5
@@ -44,15 +64,17 @@ def plot_qsvm_decision_boundary(
         np.linspace(y_min, y_max, 200)
     )
     grid_points = np.c_[xx.ravel(), yy.ravel()]
+    print("After grid_points")
 
     # 3) Map grid back to original space
     grid_original = pca.inverse_transform(grid_points)
+    print("inverse_transform")
 
-    # 4) Decision scores from QSVM
-    Z = qsvc.decision_function(grid_original)
-    Z = Z.reshape(xx.shape)
+    # 4) QSVM decision scores
+    Z = qsvc.decision_function(grid_original).reshape(xx.shape)
+    print("decision_function")
 
-    # 5) Plot contour + scatter
+    # 5) Plot
     plt.figure(figsize=(6, 5))
     plt.contourf(xx, yy, Z, levels=[-1, 0, 1], alpha=0.3, colors=["#FFAAAA", "#AAAAFF"])
     plt.scatter(X2[:, 0], X2[:, 1], c=y, cmap=plt.cm.coolwarm, edgecolors="k")
@@ -64,14 +86,25 @@ def plot_qsvm_decision_boundary(
         root = _repo_root_from_utils()
         plots_dir = os.path.join(root, "plots")
         os.makedirs(plots_dir, exist_ok=True)
-
         fname = filename if filename else _sanitize_filename(title)
         saved_path = os.path.join(plots_dir, fname)
-
         plt.savefig(saved_path, dpi=120)
         print(f"[quantum_visualizer] saved plot to: {saved_path}")
-        plt.close()   # always close, never show
+    
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
+    return saved_path
+
+'''
+A kernel matrix (sometimes called a Gram matrix) is the symmetric matrix of pairwise similarities between data points, computed by the quantum kernel.
+Each entry 
+represents the fidelity (overlap) between the quantum states corresponding to samples 
+Visualizing it as a heatmap helps you see the structure of the feature space induced by the quantum kernel — e.g., whether classes cluster or overlap.
+So plot_quantum_kernel_matrix is a heatmap of quantum kernel similarities, not a classification performance metric.
+'''
 
 def plot_quantum_kernel_matrix(
     kernel_matrix,
@@ -101,4 +134,10 @@ def plot_quantum_kernel_matrix(
 
         plt.savefig(saved_path, dpi=120)
         print(f"[quantum_visualizer] saved kernel matrix to: {saved_path}")
-        plt.close()   # always close, never show
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+    return saved_path
