@@ -1,13 +1,16 @@
-# quantum_visualizer.py
+# src/utils/quantum_visualizer.py
 import os
+import time
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")   # non-interactive backend, safe for batch runs
+matplotlib.use("Agg")  # Non-interactive backend safe for batch execution
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
+
 def _repo_root_from_utils() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 
 def _sanitize_filename(title: str) -> str:
     return (
@@ -21,123 +24,111 @@ def _sanitize_filename(title: str) -> str:
     )
 
 
-'''
-    Plot QSVM decision scores projected into 2D PCA space with contour lines.
-    If use_pca=True, PCA is applied internally.
-    If use_pca=False, X must already be 2D (e.g., PCA done in modeling).
-
-'''
-
 def plot_qsvm_decision_boundary(
     qsvc, 
-    X, 
-    y,
-    title="QSVM Decision Boundary",
+    X: np.ndarray, 
+    y: np.ndarray,
+    title: str = "QSVM Decision Boundary",
     save: bool = True,
     show: bool = True,
-    filename: str = None,
-    do_pca: bool = True
-) -> str:
-    
+    filename: str | None = None,
+    do_pca: bool = True,
+    grid_steps: int = 25
+) -> tuple[str, float]:
+    """
+    Plots QSVM decision scores in 2D space and returns (saved_path, plotting_runtime).
+    """
+    start_time = time.perf_counter()
+    saved_path = ""
 
-    # Doing Actual PCA
-    if do_pca:
-        #hard coded to 2 for 2d decison boundary
+    # 1. Coordinate reduction strategy
+    if do_pca and X.shape[1] > 2:
         pca = PCA(n_components=2, random_state=42)
         X2 = pca.fit_transform(X)
     else:
-        if X.shape[1] != 2:
-            raise ValueError("X must be 2D if use_pca=False")
-        X2 = X
-        # create a dummy PCA object so inverse_transform works
+        if X.shape[1] != 2 and not do_pca:
+            raise ValueError("X must have exactly 2 dimensions when do_pca=False")
+        X2 = X[:, :2] if X.shape[1] >= 2 else X
+
         class IdentityPCA:
-            def inverse_transform(self, pts):
+            def inverse_transform(self, pts: np.ndarray) -> np.ndarray:
+                if X.shape[1] > 2:
+                    padded = np.zeros((pts.shape[0], X.shape[1]))
+                    padded[:, :2] = pts
+                    return padded
                 return pts
+
         pca = IdentityPCA()
 
-    print("After PCA")
-    # 2) Mesh grid in PCA space
+    # 2. Mesh grid construction
     x_min, x_max = X2[:, 0].min() - 0.5, X2[:, 0].max() + 0.5
     y_min, y_max = X2[:, 1].min() - 0.5, X2[:, 1].max() + 0.5
     xx, yy = np.meshgrid(
-        np.linspace(x_min, x_max, 200),
-        np.linspace(y_min, y_max, 200)
+        np.linspace(x_min, x_max, grid_steps),
+        np.linspace(y_min, y_max, grid_steps)
     )
+
     grid_points = np.c_[xx.ravel(), yy.ravel()]
-    print("After grid_points")
 
-    # 3) Map grid back to original space
+    # 3. Decision score evaluation
     grid_original = pca.inverse_transform(grid_points)
-    print("inverse_transform")
-
-    # 4) QSVM decision scores
     Z = qsvc.decision_function(grid_original).reshape(xx.shape)
-    print("decision_function")
 
-    # 5) Plot
-    plt.figure(figsize=(6, 5))
-    plt.contourf(xx, yy, Z, levels=[-1, 0, 1], alpha=0.3, colors=["#FFAAAA", "#AAAAFF"])
-    plt.scatter(X2[:, 0], X2[:, 1], c=y, cmap=plt.cm.coolwarm, edgecolors="k")
-    plt.title(title)
-    plt.tight_layout()
+    plotting_runtime = round(time.perf_counter() - start_time, 4)
 
-    saved_path = ""
+    # 4. Explicit Object-Oriented Figure Rendering
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.contourf(xx, yy, Z, levels=[-1, 0, 1], alpha=0.35, colors=["#FFAAAA", "#AAAAFF"])
+    ax.scatter(X2[:, 0], X2[:, 1], c=y, cmap=plt.cm.coolwarm, edgecolors="k", s=24)
+    ax.set_title(f"{title}\n[Plotting Latency: {plotting_runtime}s]")
+    fig.tight_layout()
+
+    # 5. Save & Cleanup logic
     if save:
         root = _repo_root_from_utils()
         plots_dir = os.path.join(root, "plots")
         os.makedirs(plots_dir, exist_ok=True)
         fname = filename if filename else _sanitize_filename(title)
         saved_path = os.path.join(plots_dir, fname)
-        plt.savefig(saved_path, dpi=120)
-        print(f"[quantum_visualizer] saved plot to: {saved_path}")
-    
+        fig.savefig(saved_path, dpi=120)
+        print(f"[quantum_visualizer] saved boundary plot to: {saved_path}")
+
+    print(f"[quantum_visualizer] Boundary latency ({grid_steps}x{grid_steps} mesh): {plotting_runtime:.4f}s")
+
     if show:
         plt.show()
-    else:
-        plt.close()
+    
+    plt.close(fig)  # Guarantees zero figure leaks in batch processing
 
-    return saved_path
+    return saved_path, plotting_runtime
 
-'''
-A kernel matrix (sometimes called a Gram matrix) is the symmetric matrix of pairwise similarities between data points, computed by the quantum kernel.
-Each entry 
-represents the fidelity (overlap) between the quantum states corresponding to samples 
-Visualizing it as a heatmap helps you see the structure of the feature space induced by the quantum kernel — e.g., whether classes cluster or overlap.
-So plot_quantum_kernel_matrix is a heatmap of quantum kernel similarities, not a classification performance metric.
-'''
 
 def plot_quantum_kernel_matrix(
-    kernel_matrix,
-    title="Quantum Kernel Matrix",
+    kernel_matrix: np.ndarray,
+    title: str = "Quantum Kernel Matrix",
     save: bool = True,
     show: bool = True,
-    filename: str = None
+    filename: str | None = None
 ) -> str:
-    """
-    Plot a heatmap of the quantum kernel matrix.
-    """
-
-    plt.figure(figsize=(6, 5))
-    plt.imshow(kernel_matrix, interpolation="nearest", cmap="viridis")
-    plt.colorbar()
-    plt.title(title)
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(6, 5))
+    cax = ax.imshow(kernel_matrix, interpolation="nearest", cmap="viridis")
+    fig.colorbar(cax, ax=ax)
+    ax.set_title(title)
+    fig.tight_layout()
 
     saved_path = ""
     if save:
         root = _repo_root_from_utils()
         plots_dir = os.path.join(root, "plots")
         os.makedirs(plots_dir, exist_ok=True)
-
         fname = filename if filename else _sanitize_filename(title)
         saved_path = os.path.join(plots_dir, fname)
-
-        plt.savefig(saved_path, dpi=120)
+        fig.savefig(saved_path, dpi=120)
         print(f"[quantum_visualizer] saved kernel matrix to: {saved_path}")
 
     if show:
         plt.show()
-    else:
-        plt.close()
+
+    plt.close(fig)
 
     return saved_path

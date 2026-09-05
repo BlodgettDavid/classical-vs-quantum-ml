@@ -1,52 +1,38 @@
 # src/utils/data_loader.py
-# -------------------------------------------------
-# Centralized dataset loader for benchmarks.
-# Reads dataset choice from config.yaml and loads the corresponding CSV.
-# Supports breast cancer and parity datasets (4D, 6D, clean + stressed).
-# -------------------------------------------------
-
 import os
-import yaml
 import pandas as pd
+from src.utils.config_loader import load_config
 
-# Resolve absolute paths (repo root)
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA_DIR = os.path.join(ROOT_DIR, "data")
-CONFIG_PATH = os.path.join(ROOT_DIR, "config", "config.yaml")
-
-def load_config():
-    """Load experiment configuration from config.yaml."""
-    with open(CONFIG_PATH, "r") as f:
-        return yaml.safe_load(f)
 
 def dataset_to_filename(name: str) -> str:
-    """Map dataset key from config.yaml to actual CSV filename."""
-    mapping = {
-        "breast_cancer": "breast_cancer.csv",
-        "parity2d": "parity2d.csv",
-        "parity3d": "parity3d.csv",
-        "parity4d": "parity4d.csv",
-        "parity4d_stressed": "parity4d_stressed.csv",
-        "parity6d": "parity6d.csv",
-        "parity6d_stressed": "parity6d_stressed.csv",
-    }
-    if name not in mapping:
-        raise ValueError(f"Unknown dataset '{name}'. Valid keys: {list(mapping.keys())}")
-    return os.path.join(DATA_DIR, mapping[name])
+    """Map dataset key to actual CSV filename dynamically or via explicit overrides."""
+    # Append .csv if not present
+    filename = name if name.endswith(".csv") else f"{name}.csv"
+    csv_path = os.path.join(DATA_DIR, filename)
+    
+    if not os.path.exists(csv_path):
+        available = list_available_datasets()
+        raise FileNotFoundError(
+            f"Dataset '{name}' not found at {csv_path}. Available datasets: {available}"
+        )
+    return csv_path
 
-def load_dataset_from_config():
+def load_dataset_from_config(config_name="classical_svm.yaml"):
     """
-    Load dataset specified in config.yaml.
+    Loads dataset specified in the targeted config file.
     Returns (DataFrame, config dict).
     """
-    cfg = load_config()
-    ds_key = cfg.get("dataset", "parity6d_stressed")
+    cfg = load_config(config_name)
+    ds_key = cfg.get("dataset", "breast_cancer")
     csv_path = dataset_to_filename(ds_key)
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"Dataset file not found: {csv_path}. Generate it first.")
+        
     df = pd.read_csv(csv_path)
     return df, cfg
 
 def list_available_datasets():
     """List all CSV files currently available in the data directory."""
+    if not os.path.exists(DATA_DIR):
+        return []
     return [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]

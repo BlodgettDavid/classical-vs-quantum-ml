@@ -1,0 +1,33 @@
+classical_svm:
+  breast_cancer:
+    dataset: "breast_cancer"
+    pca_components: [2, 4]
+    split_ratio: 0.3
+    random_state: 42
+    scale_data: true
+    model_params:
+      kernel: "rbf"
+      C: 1.0
+      gamma: "scale"
+      degree: 0
+    visualization:
+      mesh_step: 0.02
+      plot_decision_boundary: true
+      plot_confusion_matrix: true
+      output_dir: "plots"
+
+  parity4d:
+    dataset: "parity4d_stressed"
+    split_ratio: 0.25
+    random_state: 42
+    scale_data: false
+    model_params:
+      kernel: "rbf"
+      C: 10.0
+      gamma: "scale"
+      degree: 4  # Used if kernel is changed to poly
+    visualization:
+      mesh_step: 0.02
+      plot_decision_boundary: true
+      plot_confusion_matrix: true
+      output_dir: "plots"

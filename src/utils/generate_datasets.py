@@ -1,14 +1,15 @@
 # src/utils/generate_datasets.py
 # -------------------------------------------------
 # Dataset generation script for benchmarks.
-# Produces breast cancer and parity datasets (4D, 6D, clean + stressed).
+# Produces breast cancer, parity (4D, 6D), and Wine (Top 6) datasets.
 # -------------------------------------------------
 
-import pandas as pd
-import numpy as np
-import itertools
-from sklearn.datasets import load_breast_cancer
 import os
+import itertools
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_breast_cancer, load_wine
+from sklearn.feature_selection import SelectKBest, f_classif
 
 # -------------------------------------------------
 # Resolve absolute path to the data folder
@@ -69,6 +70,37 @@ def save_parity(n_bits, stressed=False, noise_scale=0.1):
     print(f"[generate_datasets] wrote {filename} to: {csv_path}")
 
 # -------------------------------------------------
+# 3. Wine (Top 6 Features) binary dataset generator
+# -------------------------------------------------
+def save_wine_top6():
+    """
+    Save a binary subset (classes 0 and 1) of the Wine dataset reduced
+    to the top 6 continuous features via ANOVA F-score (SelectKBest).
+    Target shape: 130 samples x 6 features + 1 target column.
+    """
+    raw_data = load_wine(as_frame=True)
+    df = raw_data.frame
+
+    # Filter to binary classification (Classes 0 and 1)
+    binary_df = df[df["target"].isin([0, 1])].copy()
+    X = binary_df.drop(columns=["target"])
+    y = binary_df["target"]
+
+    # Select top 6 features using ANOVA F-value
+    selector = SelectKBest(score_func=f_classif, k=6)
+    selector.fit(X, y)
+    selected_cols = X.columns[selector.get_support()].tolist()
+
+    # Build final dataframe matching project standards
+    final_df = binary_df[selected_cols].copy()
+    final_df["target"] = y.values
+
+    filename = "wine_top6.csv"
+    csv_path = os.path.join(DATA_DIR, filename)
+    final_df.to_csv(csv_path, index=False)
+    print(f"[generate_datasets] wrote {filename} to: {csv_path}")
+
+# -------------------------------------------------
 # Main execution
 # -------------------------------------------------
 if __name__ == "__main__":
@@ -77,3 +109,4 @@ if __name__ == "__main__":
     save_parity(6, stressed=True)
     save_parity(4, stressed=False)
     save_parity(6, stressed=False)
+    save_wine_top6()  # 130 samples x 6 features (Tractable QSVM benchmark)
