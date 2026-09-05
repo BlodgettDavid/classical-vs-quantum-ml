@@ -1,0 +1,112 @@
+# config/quantum_svm.yaml
+# Phase 2 Quantum Support Vector Machine (QSVM) Configuration
+
+#datasets:
+#  breast_cancer:
+#    dataset_name: "breast_cancer"
+#    split_ratio: 0.3
+#    random_state: 42
+#    scale_data: true
+#    pca_components: [2, 4]
+#    quantum_params:
+#      feature_maps:
+#        - name: "ZZFeatureMap"
+#          reps: 2
+#          entanglement: "full"
+#        - name: "PauliFeatureMap"
+#          reps: 2
+#          entanglement: "linear"
+#          paulis: ["Z", "ZZ"]
+#      backend: "aer_simulator"
+#      shots: 1024
+#      c_val: 1.0
+
+
+
+ # parity4d:
+ #   dataset_name: "parity4d_stressed"
+ #   split_ratio: 0.25
+ #   random_state: 42
+ #   scale_data: false
+ #   pca_components: [0]  # Direct 4-qubit encoding without PCA
+ #   quantum_params:
+ #     feature_maps:
+ #       - name: "ZZFeatureMap"
+ #         reps: 2
+ #         entanglement: "full"
+ #       - name: "PauliFeatureMap"
+ #         reps: 2
+ #         entanglement: "full"
+ #         paulis: ["Z", "ZZ"]
+ #     backend: "aer_simulator"
+ #     shots: 1024
+ #     c_val: 10.0
+
+
+
+datasets:
+  breast_cancer:
+    dataset_name: "breast_cancer"
+    split_ratio: 0.3
+    random_state: 42
+    scale_data: true
+    pca_components: [2, 4]
+    
+    # Execution & simulation backends
+    backend_config:
+      type: "statevector"       # Options: "statevector", "aer_simulator"
+      shots: null               # Null for exact statevector math
+    
+    # Model parameters
+    svm_params:
+      c_val: 1.0
+
+    # Quantum feature maps to benchmark
+    quantum_params:
+      feature_maps:
+        - name: "ZZFeatureMap"
+          reps: 2
+          entanglement: "full"
+        - name: "PauliFeatureMap"
+          reps: 2
+          entanglement: "linear"
+          paulis: ["Z", "ZZ"]
+
+    # Visualization toggles
+    visualization:
+      plot_decision_boundary: true
+      grid_steps: 15
+      max_pca_dims_for_plot: 2
+
+  parity4d:
+    dataset_name: "parity4d_stressed"
+    split_ratio: 0.25
+    random_state: 42
+    scale_data: false
+    pca_components: [0]         # Direct 4-qubit encoding without PCA
+    
+    # Execution & simulation backends
+    backend_config:
+      type: "statevector"       # Match backend config schema
+      shots: null
+    
+    # Model parameters
+    svm_params:
+      c_val: 10.0               # Hard margin for deterministic parity targets
+
+    # Quantum feature maps to benchmark
+    quantum_params:
+      feature_maps:
+        - name: "ZZFeatureMap"
+          reps: 2
+          entanglement: "full"
+        - name: "PauliFeatureMap"
+          reps: 2
+          entanglement: "full"  # Full entanglement required for 4-bit parity interaction
+          paulis: ["Z", "ZZ"]
+
+    # Visualization toggles
+    visualization:
+      plot_decision_boundary: false # Cannot visualize 4D binary state spaces on 2D grids
+      grid_steps: 15
+      max_pca_dims_for_plot: 2 

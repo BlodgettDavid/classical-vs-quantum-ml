@@ -1,114 +1,203 @@
-# QSVM_Parity.py
-# Phase 2: Quantum SVM benchmark on parity dataset (ZZ feature map, reps=2, linear entanglement, no PCA)
+# src/phase2/QSVM_Parity.py
+# Phase 2: Quantum QSVM benchmark on Parity Datasets
 
-import sys, os
+import os
+import sys
+import yaml
+import time
+import psutil
+import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from datetime import datetime, timezone
-from qiskit.circuit.library import ZZFeatureMap, PauliFeatureMap
-from qiskit_machine_learning.kernels import FidelityQuantumKernel
-from qiskit_machine_learning.algorithms import QSVC
+from itertools import product
 
-# Ensure src/ is in sys.path
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+from qiskit.circuit.library import ZZFeatureMap, PauliFeatureMap
+from qiskit_machine_learning.kernels import FidelityStatevectorKernel, FidelityQuantumKernel
+from qiskit_aer import AerSimulator
+
+# Setup repository paths
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
-SRC_PATH = os.path.join(ROOT_DIR, "..", "..", "src")
-sys.path.append(os.path.abspath(SRC_PATH))
+SRC_PATH = os.path.join(ROOT_DIR, "..")
+if os.path.abspath(SRC_PATH) not in sys.path:
+    sys.path.append(os.path.abspath(SRC_PATH))
 
 from utils.logger import log_results
-from utils.quantum_visualizer import plot_qsvm_decision_boundary, plot_quantum_kernel_matrix
-from utils.data_loader import load_dataset_from_config
-from utils.quantum_evaluator import evaluate_quantum_model
+from utils.quantum_visualizer import plot_quantum_kernel_matrix
 
-# -------------------------------
-# 1. Load dataset + config
-# -------------------------------
-df, cfg = load_dataset_from_config()
-X = df.drop(columns=["target"]).values
-y = df["target"].values
 
-split_ratio = cfg["global"]["split_ratio"]
-random_state = cfg["global"]["random_state"]
+def load_config(config_filename="quantum_svm.yaml", dataset_key="parity4d"):
+    project_root = os.path.abspath(os.path.join(ROOT_DIR, "..", ".."))
+    config_path = os.path.join(project_root, "config", config_filename)
 
-# -------------------------------
-# 2. Train/test split (config-driven)
-# -------------------------------
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=split_ratio, random_state=random_state
-)
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Configuration file not found at: {config_path}")
 
-# -------------------------------
-# 3. Setup QSVM with config-driven feature map
-# -------------------------------
-feature_map_name = cfg["qsvm"]["feature_map"]
-if feature_map_name == "ZZFeatureMap":
-    feature_map = ZZFeatureMap(
-        feature_dimension=X.shape[1],
-        reps=cfg["qsvm"]["reps"],
-        entanglement=cfg["qsvm"]["entanglement"]
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    return config["datasets"][dataset_key]
+
+
+def generate_parity_32_samples(num_bits=4):
+    """Generates a balanced 32-sample Parity dataset matching Phase 1's size."""
+    base_X = np.array(list(product([0, 1], repeat=num_bits)))
+    base_y = np.sum(base_X, axis=1) % 2
+    X = np.vstack([base_X, base_X])
+    y = np.concatenate([base_y, base_y])
+    return X, y
+
+
+def build_feature_map(fm_config, num_qubits):
+    name = fm_config["name"]
+    reps = fm_config.get("reps", 2)
+    entanglement = fm_config.get("entanglement", "full")
+
+    if name == "ZZFeatureMap":
+        return ZZFeatureMap(feature_dimension=num_qubits, reps=reps, entanglement=entanglement)
+    elif name == "PauliFeatureMap":
+        paulis = fm_config.get("paulis", ["Z", "ZZ"])
+        return PauliFeatureMap(feature_dimension=num_qubits, reps=reps, entanglement=entanglement, paulis=paulis)
+    else:
+        raise ValueError(f"Unsupported feature map: {name}")
+
+
+def get_quantum_kernel(feature_map, backend_config):
+    backend_type = backend_config.get("type", "statevector")
+    shots = backend_config.get("shots", None)
+
+    if backend_type == "statevector" or shots is None:
+        return FidelityStatevectorKernel(feature_map=feature_map)
+    else:
+        backend = AerSimulator()
+        return FidelityQuantumKernel(feature_map=feature_map, fidelity_shots=shots)
+
+
+def run_parity_benchmark():
+    cfg = load_config("quantum_svm.yaml", "parity4d")
+
+    dataset_base = cfg.get("dataset_name", "parity4d_stressed")
+    split_ratio = cfg.get("split_ratio", 0.25)
+    random_state = cfg.get("random_state", 42)
+    c_val = cfg["svm_params"]["c_val"]
+    feature_map_configs = cfg["quantum_params"]["feature_maps"]
+    backend_config = cfg["backend_config"]
+
+    num_bits = 4
+    DATA_DIR = os.path.abspath(os.path.join(ROOT_DIR, "..", "..", "data"))
+    data_path = os.path.join(DATA_DIR, f"{dataset_base}.csv")
+
+    if os.path.exists(data_path):
+        df = pd.read_csv(data_path)
+        target_col = "target" if "target" in df.columns else df.columns[-1]
+        X_raw = df.drop(columns=[target_col]).values
+        y = df[target_col].values
+    else:
+        X_raw, y = generate_parity_32_samples(num_bits=num_bits)
+
+    # 32 total samples split into 24 train / 8 test
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_raw, y, test_size=split_ratio, random_state=random_state, stratify=y
     )
-elif feature_map_name == "PauliFeatureMap":
-    feature_map = PauliFeatureMap(
-        feature_dimension=X.shape[1],
-        reps=cfg["qsvm"]["reps"],
-        entanglement=cfg["qsvm"]["entanglement"]
-    )
-else:
-    raise ValueError(f"Unsupported feature map: {feature_map_name}")
 
-quantum_kernel = FidelityQuantumKernel(feature_map=feature_map)
-qsvc = QSVC(quantum_kernel=quantum_kernel)
+    for fm_cfg in feature_map_configs:
+        fm_name = fm_cfg["name"]
+        reps = fm_cfg.get("reps", 2)
+        entanglement = fm_cfg.get("entanglement", "full")
 
-# -------------------------------
-# 4. Train + evaluate QSVM
-# -------------------------------
-metrics = evaluate_quantum_model(
-    qsvc, X_train, y_train, X_test, y_test,
-    label="QSVM_Parity",
-    feature_map=feature_map,
-    backend=cfg["qsvm"]["backend"]
-)
+        print(f"\n--- QSVM_Parity_{dataset_base}_{fm_name} ---")
+
+        feature_map = build_feature_map(fm_cfg, num_qubits=num_bits)
+        qkernel = get_quantum_kernel(feature_map, backend_config)
+
+        # 1. Training & matrix build time
+        start_train = time.perf_counter()
+        matrix_train = qkernel.evaluate(x_vec=X_train)
+        qsvm = SVC(kernel="precomputed", C=c_val)
+        qsvm.fit(matrix_train, y_train)
+        train_runtime = round(time.perf_counter() - start_train, 4)
+
+        # 2. Prediction time
+        start_pred = time.perf_counter()
+        matrix_test = qkernel.evaluate(x_vec=X_test, y_vec=X_train)
+        y_test_pred = qsvm.predict(matrix_test)
+        predict_runtime = round(time.perf_counter() - start_pred, 4)
+
+        y_train_pred = qsvm.predict(matrix_train)
+
+        # Classification metrics
+        acc = accuracy_score(y_test, y_test_pred)
+        train_acc = accuracy_score(y_train, y_train_pred)
+        prec = precision_score(y_test, y_test_pred, average="binary", zero_division=0)
+        rec = recall_score(y_test, y_test_pred, average="binary", zero_division=0)
+        f1 = f1_score(y_test, y_test_pred, average="binary", zero_division=0)
+
+        cm = confusion_matrix(y_test, y_test_pred)
+        tn, fp, fn, tp = cm.ravel() if cm.size == 4 else (0, 0, 0, 0)
+
+        process = psutil.Process()
+        mem_mb = round(process.memory_info().rss / (1024 ** 2), 2)
+        cpu_pct = round(psutil.cpu_percent(interval=None), 2)
+
+        # 3. Kernel plot & plotting runtime
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        kernel_filename = f"qsvm_{dataset_base}_{fm_name.lower()}_kernel_{timestamp_str}.png"
+
+        plot_start = time.perf_counter()
+        plot_quantum_kernel_matrix(
+            matrix_train,
+            title=f"Quantum Kernel Matrix ({dataset_base}, {fm_name})",
+            filename=kernel_filename,
+            save=True,
+            show=False
+        )
+        plotting_runtime = round(time.perf_counter() - plot_start, 4)
+
+        # Metrics payload
+        metrics = {
+            "model": f"QSVM_Parity_{fm_name}",
+            "accuracy": round(acc, 4),
+            "precision": round(prec, 4),
+            "recall": round(rec, 4),
+            "f1_score": round(f1, 4),
+            "train_accuracy": round(train_acc, 4),
+            "generalization_gap": round(train_acc - acc, 4),
+            "training_runtime": train_runtime,
+            "prediction_runtime": predict_runtime,
+            "feasibility": True,
+            "memory_MB": mem_mb,
+            "cpu_percent": cpu_pct,
+            "support_vectors": len(getattr(qsvm, "support_", [])),
+            "TP": int(tp),
+            "FP": int(fp),
+            "TN": int(tn),
+            "FN": int(fn),
+            "backend": backend_config.get("type", "statevector"),
+            "dataset": dataset_base,
+            "kernel": "quantum_kernel",
+            "split_ratio": split_ratio,
+            "random_state": random_state,
+            "num_qubits": feature_map.num_qubits,
+            "circuit_depth": feature_map.decompose().depth(),
+            "feature_map": fm_name,
+            "reps": reps,
+            "entanglement": entanglement,
+            "pca_components": 0,
+            "n_train_samples": len(X_train),
+            "n_test_samples": len(X_test),
+            "plotting_runtime": plotting_runtime,
+        }
+
+        # CSV log
+        log_results(metrics)
+
+        print(f"\n=== Quantum QSVM Parity Results ({dataset_base} - {fm_name}) ===")
+        for k, v in metrics.items():
+            print(f"{k}: {v}")
 
 
-metrics["dataset"] = cfg["dataset"]
-metrics["split_ratio"] = split_ratio
-metrics["random_state"] = random_state
-
-# Quantum-specific fields
-metrics["feature_map"] = feature_map_name
-metrics["reps"] = cfg["qsvm"]["reps"]
-metrics["entanglement"] = cfg["qsvm"]["entanglement"]
-metrics["backend"] = cfg["qsvm"]["backend"]
-
-# PCA is not used in parity datasets
-metrics["pca_components"] = 0
-
-log_results(metrics)
-
-print("\n=== QSVM Parity Results ===")
-for k, v in metrics.items():
-    print(f"{k}: {v}")
-
-# -------------------------------
-# 5a. Visualize decision boundary
-# -------------------------------
-timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-plot_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_{feature_map_name.lower()}_{timestamp}.png"
-plot_qsvm_decision_boundary(
-    qsvc, X_test, y_test,
-    title=f"QSVM Parity ({metrics['dataset']}, {feature_map_name})",
-    filename=plot_filename
-)
-
-# -------------------------------
-# 5b. Visualize quantum kernel matrix
-# -------------------------------
-subset_size = min(len(X_test), max(10, int(0.25 * len(X_test))))
-subset = X_test[:subset_size]
-
-kernel_matrix = quantum_kernel.evaluate(subset)
-kernel_filename = f"{metrics['model'].lower()}_{metrics['dataset']}_kernel_{timestamp}.png"
-plot_quantum_kernel_matrix(
-    kernel_matrix,
-    title=f"Quantum Kernel Matrix ({metrics['dataset']}, {feature_map_name}, {subset_size} samples)",
-    filename=kernel_filename
-)
+if __name__ == "__main__":
+    run_parity_benchmark()
