@@ -23,49 +23,54 @@ All experiments run entirely on simulators. No quantum hardware access is requir
 
 ## 📁 Repository Structure
 
-\`\`\`
 src/
-  phase1/   Classical SVM experiments (Parity, Breast Cancer, Breast Cancer PCA)
-  phase2/   QSVM experiments on Parity datasets
-  phase3/   QSVM experiments on Breast Cancer datasets
-  utils/    Shared loaders, evaluators, loggers, and visualization tools
+  phase1/     Classical SVM experiments (Parity, Breast Cancer, Breast Cancer PCA)
+  phase2/     QSVM experiments on Parity datasets
+  phase3/     QSVM experiments on Breast Cancer datasets
+  utils/      Shared loaders, evaluators, loggers, and visualization tools
+              └─ summary_visualizer.py (Standalone results visualizer)
 
-config/     YAML configuration for dataset selection
-data/       Public datasets (parity and breast cancer)
-plots/      Auto-generated plots (ignored by git)
-results.csv Logged experiment results
-\`\`\`
+config/       YAML configuration for dataset selection
+data/         Public datasets (parity and breast cancer)
+plots/        Auto-generated plots (ignored by git)
+  summary_plots/ Saved visualization outputs
+results.csv   Logged experiment results
 
 ---
 
 ## ▶️ Running the Software (Windows)
 
 ### 1. Clone the repository
-\`\`\`cmd
 git clone https://github.com/your-username/classical-vs-quantum-svm.git
 cd classical-vs-quantum-svm
-\`\`\`
 
 ### 2. Create and activate a virtual environment
-\`\`\`cmd
 python -m venv .venv
 .venv\Scripts\activate
-\`\`\`
 
 ### 3. Install dependencies
-\`\`\`cmd
 pip install -r requirements.txt
-\`\`\`
 
 ### 4. Run experiments as Python modules
-\`\`\`cmd
 python -m src.phase1.SVM_Parity
 python -m src.phase2.QSVM_Parity
 python -m src.phase1.SVM_BreastCancer
 python -m src.phase1.SVM_BreastCancer_PCA
 python -m src.phase3.QSVM_BreastCancer
 python -m src.phase3.QSVM_BreastCancer_PCA
-\`\`\`
+
+### 5. Run standalone results visualizer
+python -m src.utils.summary_visualizer
+
+---
+
+## 📈 Generating Summary Visualizations
+
+To visualize aggregated results across experiments, run the standalone visualizer module:
+
+python -m src.utils.summary_visualizer
+
+This tool reads results.csv and generates performance comparison charts (Accuracy, Precision, Recall, F1 Score, and Execution Time) saved directly to the plots/summary_plots/ directory.
 
 ---
 
@@ -98,7 +103,6 @@ python -m src.phase3.QSVM_BreastCancer_PCA
 
 ---
 
-
 ## ⚙️ Config-driven Experiments
 
 All experiments are controlled by `config/config.yaml`. This file specifies:
@@ -111,13 +115,14 @@ This ensures reproducibility and makes it easy to switch between experiments.
 
 ---
 
-## 🧩 Evaluators
+## 🧩 Evaluators & Visualizers
 
-The old `evaluator.py` has been split into:
+The old `evaluator.py` has been refactored into focused modular utilities:
 - `utils/classical_evaluator.py` → metrics for classical SVM
 - `utils/quantum_evaluator.py` → metrics for QSVM
+- `utils/summary_visualizer.py` → standalone script for aggregating and plotting benchmark logs
 
-Both feed into `utils/logger.py` to produce consistent rows in `results.csv`.
+Both evaluators feed into `utils/logger.py` to produce consistent rows in `results.csv`.
 
 ---
 
@@ -139,8 +144,7 @@ Every run writes a complete row to `results/results.csv`, including:
 
 ---
 
-
-## Docs Folder
+## 📂 Docs Folder
 
 The `docs` directory is included in the repository with a `.gitkeep` file to preserve
 the folder structure. This ensures documentation can be added in the future without
