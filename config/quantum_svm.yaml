@@ -63,4 +63,37 @@ datasets:
     visualization:
       plot_decision_boundary: false # Cannot visualize 4D binary state spaces on 2D grids
       grid_steps: 15
-      max_pca_dims_for_plot: 2 
+      max_pca_dims_for_plot: 2
+
+  wine_top6:
+    dataset_name: "wine_top6"
+    split_ratio: 0.3
+    random_state: 42
+    scale_data: true
+    pca_components: [0, 2]       # 0 = 6 qubits direct encoding, 2 = 2 qubits with PCA
+    
+    # Execution & simulation backends
+    backend_config:
+      type: "statevector"
+      shots: null
+    
+    # Model parameters
+    svm_params:
+      c_val: 1.0
+
+    # Quantum feature maps to benchmark
+    quantum_params:
+      feature_maps:
+        - name: "ZZFeatureMap"
+          reps: 2
+          entanglement: "linear"
+        - name: "PauliFeatureMap"
+          reps: 2
+          entanglement: "linear"
+          paulis: ["Z", "ZZ"]
+
+    # Visualization toggles
+    visualization:
+      plot_decision_boundary: true
+      grid_steps: 15
+      max_pca_dims_for_plot: 2

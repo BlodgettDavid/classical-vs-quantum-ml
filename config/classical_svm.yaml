@@ -31,3 +31,20 @@ classical_svm:
       plot_decision_boundary: true
       plot_confusion_matrix: true
       output_dir: "plots"
+
+  wine_top6:
+    dataset: "wine_top6"
+    pca_components: [0, 2] # 0 = all 6 features directly, 2 = 2D PCA projection
+    split_ratio: 0.3
+    random_state: 42
+    scale_data: true
+    model_params:
+      kernel: "rbf"
+      C: 1.0
+      gamma: "scale"
+      degree: 0
+    visualization:
+      mesh_step: 0.02
+      plot_decision_boundary: true
+      plot_confusion_matrix: true
+      output_dir: "plots"
