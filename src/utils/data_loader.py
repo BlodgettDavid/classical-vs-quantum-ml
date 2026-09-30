@@ -1,14 +1,20 @@
 # src/utils/data_loader.py
 import os
 import pandas as pd
+from typing import Tuple
 from src.utils.config_loader import load_config
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 
+def list_available_datasets() -> list:
+    """List all CSV files currently available in the data directory."""
+    if not os.path.exists(DATA_DIR):
+        return []
+    return [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
+
 def dataset_to_filename(name: str) -> str:
-    """Map dataset key to actual CSV filename dynamically or via explicit overrides."""
-    # Append .csv if not present
+    """Map dataset key to actual CSV filename dynamically."""
     filename = name if name.endswith(".csv") else f"{name}.csv"
     csv_path = os.path.join(DATA_DIR, filename)
     
@@ -19,7 +25,22 @@ def dataset_to_filename(name: str) -> str:
         )
     return csv_path
 
-def load_dataset_from_config(config_name="classical_svm.yaml"):
+def load_dataset_by_key(dataset_key: str) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    Loads a dataset CSV by key/name, returning features (X) and target (y).
+    Assumes the target column is named 'target'.
+    """
+    csv_path = dataset_to_filename(dataset_key)
+    df = pd.read_csv(csv_path)
+    
+    if "target" not in df.columns:
+        raise KeyError(f"Expected 'target' column in {csv_path}, but found: {list(df.columns)}")
+        
+    X = df.drop(columns=["target"])
+    y = df["target"]
+    return X, y
+
+def load_dataset_from_config(config_name="classical_svm.yaml") -> Tuple[pd.DataFrame, dict]:
     """
     Loads dataset specified in the targeted config file.
     Returns (DataFrame, config dict).
@@ -30,9 +51,3 @@ def load_dataset_from_config(config_name="classical_svm.yaml"):
         
     df = pd.read_csv(csv_path)
     return df, cfg
-
-def list_available_datasets():
-    """List all CSV files currently available in the data directory."""
-    if not os.path.exists(DATA_DIR):
-        return []
-    return [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]

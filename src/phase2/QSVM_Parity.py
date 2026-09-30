@@ -11,9 +11,12 @@ import numpy as np
 from datetime import datetime, timezone
 from itertools import product
 
+
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
 
 from qiskit.circuit.library import ZZFeatureMap, PauliFeatureMap
 from qiskit_machine_learning.kernels import FidelityStatevectorKernel, FidelityQuantumKernel
@@ -26,7 +29,7 @@ if os.path.abspath(SRC_PATH) not in sys.path:
     sys.path.append(os.path.abspath(SRC_PATH))
 
 from utils.logger import log_results
-from utils.quantum_visualizer import plot_quantum_kernel_matrix
+from utils.quantum_visualizer import plot_quantum_kernel_matrix, plot_quantum_confusion_matrix
 
 
 def load_config(config_filename="quantum_svm.yaml", dataset_key="parity4d"):
@@ -59,11 +62,11 @@ def build_feature_map(fm_config, num_qubits):
     if name == "ZZFeatureMap":
         return ZZFeatureMap(feature_dimension=num_qubits, reps=reps, entanglement=entanglement)
     elif name == "PauliFeatureMap":
+        # Pull paulis list directly from config, defaulting to standard Z/ZZ rotations
         paulis = fm_config.get("paulis", ["Z", "ZZ"])
         return PauliFeatureMap(feature_dimension=num_qubits, reps=reps, entanglement=entanglement, paulis=paulis)
     else:
         raise ValueError(f"Unsupported feature map: {name}")
-
 
 def get_quantum_kernel(feature_map, backend_config):
     backend_type = backend_config.get("type", "statevector")
@@ -79,12 +82,21 @@ def get_quantum_kernel(feature_map, backend_config):
 def run_parity_benchmark():
     cfg = load_config("quantum_svm.yaml", "parity4d")
 
-    dataset_base = cfg.get("dataset_name", "parity4d_stressed")
+    # Aligned schema keys: dataset name & SVM regularizer C
+    dataset_base = cfg.get("dataset", "parity4d_stressed")
     split_ratio = cfg.get("split_ratio", 0.25)
     random_state = cfg.get("random_state", 42)
-    c_val = cfg["svm_params"]["c_val"]
+    scale_data = cfg.get("scale_data", False)
+    c_val = cfg["svm_params"]["C"]
     feature_map_configs = cfg["quantum_params"]["feature_maps"]
     backend_config = cfg["backend_config"]
+
+
+    # Target directory for output artifacts
+    viz_cfg = cfg.get("visualization", {})
+    output_dir_rel = viz_cfg.get("output_dir", "plots")
+    output_dir = os.path.abspath(os.path.join(ROOT_DIR, "..", "..", output_dir_rel))
+    os.makedirs(output_dir, exist_ok=True)
 
     num_bits = 4
     DATA_DIR = os.path.abspath(os.path.join(ROOT_DIR, "..", "..", "data"))
@@ -98,10 +110,15 @@ def run_parity_benchmark():
     else:
         X_raw, y = generate_parity_32_samples(num_bits=num_bits)
 
-    # 32 total samples split into 24 train / 8 test
+    # 32 total samples split into 24 train / 8 test (Direct 4D, no PCA)
     X_train, X_test, y_train, y_test = train_test_split(
         X_raw, y, test_size=split_ratio, random_state=random_state, stratify=y
     )
+
+    if scale_data:
+        scaler = MinMaxScaler(feature_range=(0, np.pi))
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
 
     for fm_cfg in feature_map_configs:
         fm_name = fm_cfg["name"]
@@ -142,11 +159,14 @@ def run_parity_benchmark():
         mem_mb = round(process.memory_info().rss / (1024 ** 2), 2)
         cpu_pct = round(psutil.cpu_percent(interval=None), 2)
 
-        # 3. Kernel plot & plotting runtime
+        # 3. Unconditional Artifact Generation (Kernel Gram Matrix & Confusion Matrix)
         timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-        kernel_filename = f"qsvm_{dataset_base}_{fm_name.lower()}_kernel_{timestamp_str}.png"
+        kernel_filename = os.path.join(output_dir, f"qsvm_{dataset_base}_{fm_name.lower()}_kernel_{timestamp_str}.png")
+        cm_filename = os.path.join(output_dir, f"qsvm_{dataset_base}_{fm_name.lower()}_cm_{timestamp_str}.png")
 
         plot_start = time.perf_counter()
+
+        # Artifact 1: Quantum Kernel Matrix Heatmap
         plot_quantum_kernel_matrix(
             matrix_train,
             title=f"Quantum Kernel Matrix ({dataset_base}, {fm_name})",
@@ -154,6 +174,20 @@ def run_parity_benchmark():
             save=True,
             show=False
         )
+
+        # Artifact 2: Categorical Confusion Matrix Heatmap
+        plot_quantum_confusion_matrix(
+            y_test,
+            y_test_pred,
+            title=f"QSVM Parity ({fm_name}) Confusion Matrix",
+            filename=cm_filename,
+            save=True,
+            show=False
+        )
+
+        # NOTE: 2D mesh grid decision boundary plotting is omitted for Parity 4D.
+        # Slicing continuous 2D planes through 4D binary hypercubes produces uninformative projections.
+
         plotting_runtime = round(time.perf_counter() - plot_start, 4)
 
         # Metrics payload

@@ -2,12 +2,14 @@
 
 import os
 import sys
+import time
 import pandas as pd
 from datetime import datetime, timezone
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
+from sklearn.metrics.pairwise import rbf_kernel, polynomial_kernel
 
 # Setup repository paths
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -21,13 +23,14 @@ from utils.logger import log_results
 from utils.classical_visualizer import (
     plot_projected_decision_boundary,
     plot_confusion_matrix,
+    plot_kernel_matrix,
 )
 
 def run_breast_cancer_pca_baseline():
     # 1. Load configuration specifically for breast_cancer
     cfg = load_config("classical_svm.yaml", dataset_key="breast_cancer")
     
-    dataset = cfg.get("dataset", "breast_cancer")
+    dataset = cfg.get("dataset_name", cfg.get("dataset", "breast_cancer"))
     data_dir = os.path.join(ROOT_DIR, "..", "..", "data")
     data_path = os.path.join(data_dir, f"{dataset}.csv")
     
@@ -46,11 +49,14 @@ def run_breast_cancer_pca_baseline():
     random_state = cfg.get("random_state", 42)
     scale_data = cfg.get("scale_data", True)
     
-    model_params = cfg.get("model_params", {})
-    kernel = model_params.get("kernel", "rbf")
-    C = model_params.get("C", 1.0)
-    gamma = model_params.get("gamma", "scale")
-    degree = model_params.get("degree", 0)
+    svm_params = cfg.get("svm_params", cfg.get("model_params", {}))
+    kernel = svm_params.get("kernel", "rbf")
+    C = svm_params.get("C", svm_params.get("c_val", 1.0))
+    gamma = svm_params.get("gamma", "scale")
+    degree = svm_params.get("degree", 0)
+
+    viz_cfg = cfg.get("visualization", {})
+    grid_steps = viz_cfg.get("grid_steps", 100)
 
     # Extract array of components to test (e.g. [2, 4])
     pca_components_list = cfg.get("pca_components", [2, 4])
@@ -78,38 +84,59 @@ def run_breast_cancer_pca_baseline():
         # 4. Instantiate Classical SVM
         model = SVC(kernel=kernel, C=C, gamma=gamma, degree=degree, random_state=random_state)
 
-        # 5. Evaluate Model
+        # 5. Evaluate Model (Core performance measurement isolated inside evaluate_model)
         model_name = f"SVM_BreastCancer_PCA{n_components}"
         eval_metrics = evaluate_model(
             model, X_train_pca, y_train, X_test_pca, y_test, label=model_name
         )
 
-        # 6. Generate Visualizations
+        # 6. Generate Visualizations (Timed independently for plotting_runtime)
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        plot_start_time = time.perf_counter()
+
+        # Decision Boundary Plot
         boundary_filename = f"svm_breastcancer_pca_{dataset}_pca{n_components}_{kernel}_{timestamp}.png"
-        
-        _, plotting_runtime = plot_projected_decision_boundary(
+        plot_projected_decision_boundary(
             model,
             X_test_pca,
             y_test,
-            title=f"Classical SVM Breast Cancer ({n_components}D PCA, {kernel} kernel)",
+            title=f"Classical SVM Breast Cancer ({n_components}D PCA, {kernel.upper()} kernel)",
             save=True,
             show=False,
             filename=boundary_filename,
             do_pca=(n_components > 2),
-            grid_steps=50,
+            grid_steps=grid_steps,
         )
 
+        # Classical Kernel Matrix Heatmap (NxN)
+        if kernel == "poly":
+            gram_matrix = polynomial_kernel(X_train_pca, X_train_pca, degree=degree)
+        else:
+            gamma_val = 1.0 / X_train_pca.shape[1] if gamma == "scale" else gamma
+            gram_matrix = rbf_kernel(X_train_pca, X_train_pca, gamma=gamma_val)
+
+        kernel_filename = f"svm_breastcancer_pca_{dataset}_pca{n_components}_{kernel}_kernel_{timestamp}.png"
+        plot_kernel_matrix(
+            gram_matrix,
+            title=f"Classical Kernel Matrix ({dataset.upper()} PCA{n_components}, {kernel.upper()} kernel)",
+            save=True,
+            show=False,
+            filename=kernel_filename,
+        )
+
+        # Confusion Matrix
         y_pred = model.predict(X_test_pca)
         cm_filename = f"svm_breastcancer_pca_{dataset}_pca{n_components}_{kernel}_cm_{timestamp}.png"
         plot_confusion_matrix(
             y_test,
             y_pred,
-            title=f"Confusion Matrix ({dataset} PCA{n_components}, {kernel} kernel)",
+            title=f"Confusion Matrix ({dataset.upper()} PCA{n_components}, {kernel.upper()} kernel)",
             save=True,
             show=False,
             filename=cm_filename,
         )
+
+        total_plotting_runtime = round(time.perf_counter() - plot_start_time, 4)
 
         # 7. Construct Enriched Metrics Dictionary explicitly matching required schema
         metrics = {
@@ -126,11 +153,11 @@ def run_breast_cancer_pca_baseline():
             ),
             "training_runtime": round(eval_metrics.get("training_runtime", 0.0), 4),
             "prediction_runtime": round(eval_metrics.get("prediction_runtime", 0.0), 4),
-            "plotting_runtime": round(plotting_runtime, 4),
+            "plotting_runtime": total_plotting_runtime,
             "feasibility": True,
             "memory_MB": round(eval_metrics.get("memory_MB", 0.0), 2),
-            "cpu_percent": round(eval_metrics.get("cpu_percent", 0.0), 1),
-            "support_vectors": int(len(model.support_)),
+            "cpu_percent": round(eval_metrics.get("cpu_percent", 0.0), 2),
+            "support_vectors": int(eval_metrics.get("support_vectors", 0)),
             "TP": int(eval_metrics.get("TP", 0)),
             "FP": int(eval_metrics.get("FP", 0)),
             "TN": int(eval_metrics.get("TN", 0)),
@@ -151,7 +178,7 @@ def run_breast_cancer_pca_baseline():
             "entanglement": "N/A",
         }
 
-        # 8. Log Enriched Metrics
+        # 8. Log Enriched Metrics (Executed entirely outside of training, predicting, and plotting times)
         log_results(metrics)
 
         print(f"=== Results for PCA={n_components} ===")

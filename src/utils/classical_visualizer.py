@@ -135,3 +135,47 @@ def plot_confusion_matrix(
     plt.close(fig)
 
     return saved_path
+
+
+def plot_kernel_matrix(
+    kernel_matrix: np.ndarray,
+    title: str = "Classical Kernel Matrix",
+    save: bool = True,
+    show: bool = True,
+    filename: str = None
+) -> str:
+    """
+    Plots and exports an NxN heatmap representation of a classical kernel Gram matrix.
+    """
+    import seaborn as sns
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    sns.heatmap(
+        kernel_matrix, 
+        cmap="viridis", 
+        cbar=True, 
+        ax=ax, 
+        vmin=0.0, 
+        vmax=1.0
+    )
+    ax.set_title(title)
+    ax.set_xlabel("Sample Index")
+    ax.set_ylabel("Sample Index")
+    fig.tight_layout()
+
+    saved_path = ""
+    if save:
+        root = _repo_root_from_utils()
+        plots_dir = os.path.join(root, "plots")
+        os.makedirs(plots_dir, exist_ok=True)
+        fname = filename if filename else _sanitize_filename(title)
+        saved_path = os.path.join(plots_dir, fname)
+        fig.savefig(saved_path, dpi=120)
+        print(f"[classical_visualizer] saved kernel matrix to: {saved_path}")
+
+    if show:
+        plt.show()
+
+    plt.close(fig)
+
+    return saved_path

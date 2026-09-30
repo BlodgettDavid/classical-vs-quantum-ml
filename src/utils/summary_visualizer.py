@@ -4,8 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-RESULTS_DIR = "results"
-PLOTS_DIR = "plots"
+# Dynamically compute project root directory
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+RESULTS_DIR = os.path.join(ROOT_DIR, "results")
+PLOTS_DIR = os.path.join(ROOT_DIR, "plots")
 
 
 def load_all_results(results_dir: str = RESULTS_DIR) -> pd.DataFrame:
@@ -17,10 +19,6 @@ def load_all_results(results_dir: str = RESULTS_DIR) -> pd.DataFrame:
 
     dfs = []
     for file in csv_files:
-        # Exclude sub-group files to prevent duplicate entries
-        if os.path.basename(file) in ["results_breast_cancer.csv", "results_parity.csv"]:
-            continue
-            
         try:
             df = pd.read_csv(file)
             if not df.empty and ("dataset" in df.columns or "dataset_name" in df.columns):
@@ -41,7 +39,16 @@ def load_all_results(results_dir: str = RESULTS_DIR) -> pd.DataFrame:
         "training_runtime": "train_time_sec",
         "support_vectors": "num_support_vectors",
     }
-    return combined_df.rename(columns=column_mapping)
+    df_clean = combined_df.rename(columns=column_mapping)
+
+    # Convert timestamp to datetime for reliable sorting & deduplicate to keep latest run per model/dataset
+    if "timestamp" in df_clean.columns:
+        df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"], format="ISO8601", errors="coerce")
+        df_clean = df_clean.sort_values("timestamp").groupby(["dataset_name", "model_type"], as_index=False).last()
+    else:
+        df_clean = df_clean.groupby(["dataset_name", "model_type"], as_index=False).last()
+
+    return df_clean
 
 
 def plot_accuracy_vs_runtime(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
@@ -72,7 +79,6 @@ def plot_accuracy_vs_runtime(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     ax.set_ylim(-0.05, 1.05)
     ax.grid(True, which="both", linestyle="--", alpha=0.5)
     
-    # Place legend strictly outside plot area
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", borderaxespad=0., frameon=True)
     
     out_path = os.path.join(output_dir, "summary_accuracy_vs_runtime.png")
@@ -92,7 +98,6 @@ def plot_generalization_gap(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     else:
         df_plot["gen_gap"] = df_plot["train_accuracy"] - df_plot["test_accuracy"]
 
-    # Shorten multiline labels to prevent axis overlapping
     df_plot["short_label"] = df_plot["dataset_name"].astype(str) + "\n" + df_plot["model_type"].astype(str)
 
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -112,7 +117,6 @@ def plot_generalization_gap(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     plt.xticks(rotation=30, ha="right", fontsize=9)
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
     
-    # Place legend strictly outside plot area
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", borderaxespad=0., frameon=True)
 
     out_path = os.path.join(output_dir, "summary_generalization_gap.png")
@@ -145,7 +149,6 @@ def plot_support_vectors(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     plt.xticks(rotation=30, ha="right", fontsize=9)
     ax.grid(True, axis="y", linestyle="--", alpha=0.5)
     
-    # Place legend strictly outside plot area
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", borderaxespad=0., frameon=True)
 
     out_path = os.path.join(output_dir, "summary_support_vectors.png")
@@ -154,7 +157,7 @@ def plot_support_vectors(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     print(f"[+] Saved: {out_path}")
 
 
-def generate_all_summary_plots(results_dir="results", output_dir="plots"):
+def generate_all_summary_plots(results_dir=RESULTS_DIR, output_dir=PLOTS_DIR):
     """Main execution entry point."""
     os.makedirs(results_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
