@@ -1,35 +1,37 @@
-classical_svm:
+datasets:
   breast_cancer:
-    dataset: "breast_cancer"
-    pca_components: [2, 4]
+    dataset_name: "breast_cancer"
     split_ratio: 0.3
     random_state: 42
     scale_data: true
-    model_params:
+    pca_components: [2, 4]
+
+    # Model hyperparameters
+    svm_params:
       kernel: "rbf"
       C: 1.0
       gamma: "scale"
       degree: 0
+
+    # Visualization settings
     visualization:
-      mesh_step: 0.02
-      plot_decision_boundary: true
-      plot_confusion_matrix: true
+      grid_steps: 100
       output_dir: "plots"
 
   parity4d:
     dataset: "parity4d_stressed"
+    pca_components: [0] # 0 = use all 4 original features directly (no PCA)
     split_ratio: 0.25
     random_state: 42
-    scale_data: false
+    scale_data: false    
+    
+    # Model hyperparameters
     model_params:
       kernel: "rbf"
       C: 10.0
       gamma: "scale"
       degree: 4  # Used if kernel is changed to poly
     visualization:
-      mesh_step: 0.02
-      plot_decision_boundary: true
-      plot_confusion_matrix: true
       output_dir: "plots"
 
   wine_top6:

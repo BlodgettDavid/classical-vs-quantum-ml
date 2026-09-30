@@ -14,56 +14,47 @@ datasets:
     # Model parameters
     svm_params:
       c_val: 1.0
+      class_weight: "balanced"  # <-- FIX 1: Prevents majority class collapse (TN=0)
 
     # Quantum feature maps to benchmark
     quantum_params:
       feature_maps:
         - name: "ZZFeatureMap"
-          reps: 2
+          reps: 1               # <-- FIX 2: Reduced reps to prevent phase over-rotation
           entanglement: "full"
         - name: "PauliFeatureMap"
-          reps: 2
+          reps: 1               # <-- FIX 2: Lower circuit depth (depth ~5 instead of ~10/31)
           entanglement: "linear"
           paulis: ["Z", "ZZ"]
 
-    # Visualization toggles
+    # Visualization settings
     visualization:
       plot_decision_boundary: true
-      grid_steps: 15
-      max_pca_dims_for_plot: 2
+      grid_steps: 25
+      output_dir: "plots"
 
   parity4d:
-    dataset_name: "parity4d_stressed"
-    split_ratio: 0.25
+    dataset: "parity4d_stressed"
+    split_ratio: 0.125          # Reduced test split from 0.25 to 0.125 (gives more training data)
     random_state: 42
-    scale_data: false
-    pca_components: [0]         # Direct 4-qubit encoding without PCA
-    
-    # Execution & simulation backends
-    backend_config:
-      type: "statevector"       # Match backend config schema
-      shots: null
-    
-    # Model parameters
-    svm_params:
-      c_val: 10.0               # Hard margin for deterministic parity targets
+    scale_data: true
 
-    # Quantum feature maps to benchmark
+    backend_config:
+      type: "statevector"
+      shots: null
+
+    svm_params:
+      C: 0.1                    # Adjusted to C=0.1 to widen SVM margins and prevent SV saturation
+
     quantum_params:
       feature_maps:
         - name: "ZZFeatureMap"
-          reps: 2
+          reps: 1
           entanglement: "full"
         - name: "PauliFeatureMap"
-          reps: 2
-          entanglement: "full"  # Full entanglement required for 4-bit parity interaction
-          paulis: ["Z", "ZZ"]
-
-    # Visualization toggles
-    visualization:
-      plot_decision_boundary: false # Cannot visualize 4D binary state spaces on 2D grids
-      grid_steps: 15
-      max_pca_dims_for_plot: 2
+          reps: 1
+          entanglement: "linear"
+          paulis: ["Z", "ZZ", "ZZZZ"]
 
   wine_top6:
     dataset_name: "wine_top6"

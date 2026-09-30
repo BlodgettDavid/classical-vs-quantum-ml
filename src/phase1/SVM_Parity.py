@@ -5,6 +5,7 @@ import sys, os, time
 import numpy as np
 import pandas as pd
 from sklearn.svm import SVC
+from sklearn.metrics.pairwise import rbf_kernel, polynomial_kernel
 from sklearn.model_selection import train_test_split
 from datetime import datetime, timezone
 from itertools import product
@@ -19,8 +20,8 @@ if os.path.abspath(SRC_PATH) not in sys.path:
 
 from utils.logger import log_results
 from utils.classical_visualizer import (
-    plot_projected_decision_boundary,
-    plot_confusion_matrix
+    plot_confusion_matrix,
+    plot_kernel_matrix
 )
 from utils.classical_evaluator import evaluate_model
 from utils.config_loader import load_config
@@ -38,7 +39,7 @@ def run_svm_parity():
     # 1. Load parameters from config
     # -------------------------------
     cfg = load_config("classical_svm.yaml", dataset_key="parity4d")
-    dataset = cfg.get("dataset", "parity4d")
+    dataset = cfg.get("dataset", "parity4d_stressed")
 
     split_ratio = cfg.get("split_ratio", 0.25)
     random_state = cfg.get("random_state", 42)
@@ -63,8 +64,6 @@ def run_svm_parity():
     else:
         # Fallback generator guaranteeing 32 total samples
         X, y = generate_parity_32_samples(num_bits=4)
-
-    n_features = X.shape[1]
 
     # -------------------------------
     # 3. Train/test split (24 train / 8 test)
@@ -112,22 +111,26 @@ def run_svm_parity():
     # 6. Visualizations
     # -------------------------------
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-    boundary_filename = f"svm_{dataset}_{kernel}_{timestamp}.png"
+    plot_start_time = time.perf_counter()
 
-    plot_path, plotting_runtime = plot_projected_decision_boundary(
-        model,
-        X_test, 
-        y_test,
-        title=f"Classical SVM Parity ({dataset.upper()}, {kernel.upper()} kernel)",
+    # Classical Kernel Matrix Heatmap (NxN)
+    if kernel == "poly":
+        gram_matrix = polynomial_kernel(X_train, X_train, degree=degree)
+    else:
+        # Default RBF Kernel scale conversion
+        gamma_val = 1.0 / X_train.shape[1] if gamma == "scale" else gamma
+        gram_matrix = rbf_kernel(X_train, X_train, gamma=gamma_val)
+
+    kernel_filename = f"svm_{dataset}_{kernel}_kernel_{timestamp}.png"
+    plot_kernel_matrix(
+        gram_matrix,
+        title=f"Classical Kernel Matrix ({dataset.upper()}, {kernel.upper()} kernel)",
         save=True,
         show=False,
-        filename=boundary_filename,
-        do_pca=(n_features > 2),
-        grid_steps=100
+        filename=kernel_filename
     )
-    metrics["plotting_runtime"] = plotting_runtime
 
-    # Confusion Matrix
+    # Confusion Matrix (2x2)
     y_pred = model.predict(X_test)
     cm_filename = f"svm_{dataset}_{kernel}_cm_{timestamp}.png"
     plot_confusion_matrix(
@@ -138,6 +141,9 @@ def run_svm_parity():
         show=False,
         filename=cm_filename
     )
+
+    # Record plotting runtime BEFORE logging
+    metrics["plotting_runtime"] = round(time.perf_counter() - plot_start_time, 4)
 
     # -------------------------------
     # 7. Log Results

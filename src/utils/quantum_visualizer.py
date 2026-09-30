@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend safe for batch execution
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.metrics import confusion_matrix
 
 
 def _repo_root_from_utils() -> str:
@@ -61,8 +62,14 @@ def plot_qsvm_decision_boundary(
         pca = IdentityPCA()
 
     # 2. Mesh grid construction
-    x_min, x_max = X2[:, 0].min() - 0.5, X2[:, 0].max() + 0.5
-    y_min, y_max = X2[:, 1].min() - 0.5, X2[:, 1].max() + 0.5
+    margin_x = (X2[:, 0].max() - X2[:, 0].min()) * 0.05
+    margin_y = (X2[:, 1].max() - X2[:, 1].min()) * 0.05
+
+    x_min = max(0.0, X2[:, 0].min() - margin_x)
+    x_max = min(np.pi, X2[:, 0].max() + margin_x)
+    y_min = max(0.0, X2[:, 1].min() - margin_y)
+    y_max = min(np.pi, X2[:, 1].max() + margin_y)
+
     xx, yy = np.meshgrid(
         np.linspace(x_min, x_max, grid_steps),
         np.linspace(y_min, y_max, grid_steps)
@@ -72,8 +79,11 @@ def plot_qsvm_decision_boundary(
 
     # 3. Decision score evaluation
     grid_original = pca.inverse_transform(grid_points)
+    grid_original = np.clip(grid_original, 0.0, np.pi)
+    
     Z = qsvc.decision_function(grid_original).reshape(xx.shape)
 
+    # Compute execution time before using it in title formatting
     plotting_runtime = round(time.perf_counter() - start_time, 4)
 
     # 4. Explicit Object-Oriented Figure Rendering
@@ -98,7 +108,7 @@ def plot_qsvm_decision_boundary(
     if show:
         plt.show()
     
-    plt.close(fig)  # Guarantees zero figure leaks in batch processing
+    plt.close(fig)
 
     return saved_path, plotting_runtime
 
@@ -125,6 +135,63 @@ def plot_quantum_kernel_matrix(
         saved_path = os.path.join(plots_dir, fname)
         fig.savefig(saved_path, dpi=120)
         print(f"[quantum_visualizer] saved kernel matrix to: {saved_path}")
+
+    if show:
+        plt.show()
+
+    plt.close(fig)
+
+    return saved_path
+
+
+def plot_quantum_confusion_matrix(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    title: str = "Quantum Confusion Matrix",
+    save: bool = True,
+    show: bool = True,
+    filename: str | None = None
+) -> str:
+    """
+    Renders a 2x2 categorical confusion matrix heatmap with cell count annotations.
+    """
+    cm = confusion_matrix(y_true, y_pred)
+    
+    fig, ax = plt.subplots(figsize=(5, 4.5))
+    cax = ax.imshow(cm, interpolation="nearest", cmap="Blues")
+    fig.colorbar(cax, ax=ax)
+
+    # Annotate counts and percentages inside cells
+    total = np.sum(cm)
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            count = cm[i, j]
+            pct = (count / total * 100) if total > 0 else 0
+            ax.text(
+                j, i, f"{count}\n({pct:.1f}%)",
+                ha="center", va="center",
+                color="white" if cm[i, j] > (cm.max() / 2.0) else "black",
+                fontsize=11, fontweight="bold"
+            )
+
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(["Class 0", "Class 1"])
+    ax.set_yticklabels(["Class 0", "Class 1"])
+    ax.set_xlabel("Predicted Label", fontweight="bold")
+    ax.set_ylabel("True Label", fontweight="bold")
+    ax.set_title(title)
+    fig.tight_layout()
+
+    saved_path = ""
+    if save:
+        root = _repo_root_from_utils()
+        plots_dir = os.path.join(root, "plots")
+        os.makedirs(plots_dir, exist_ok=True)
+        fname = filename if filename else _sanitize_filename(title)
+        saved_path = os.path.join(plots_dir, fname)
+        fig.savefig(saved_path, dpi=120)
+        print(f"[quantum_visualizer] saved confusion matrix to: {saved_path}")
 
     if show:
         plt.show()
