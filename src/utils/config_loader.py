@@ -4,9 +4,9 @@ import yaml
 
 def load_config(config_name="classical_svm.yaml", dataset_key=None):
     """
-    Loads a configuration YAML file from the config/ directory.
+    Loads a configuration YAML file from the config/ directory[cite: 4].
     
-    Dynamically routes dataset keys through 'classical_svm', 'datasets', or top-level.
+    Dynamically routes dataset keys through 'classical_svm', 'datasets', or top-level[cite: 4].
     """
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     
@@ -25,7 +25,6 @@ def load_config(config_name="classical_svm.yaml", dataset_key=None):
         full_config = yaml.safe_load(f)
 
     if dataset_key:
-        # Check 'datasets' section first, then 'classical_svm', then fallback to root
         section = (
             full_config.get("datasets") 
             or full_config.get("classical_svm") 
