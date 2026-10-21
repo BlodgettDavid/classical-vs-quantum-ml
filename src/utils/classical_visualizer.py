@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")  # Prevent GUI window creation in headless/batch execution
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 def _repo_root_from_utils() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -20,6 +22,95 @@ def _sanitize_filename(title: str) -> str:
              + ".png"
     )
 
+def plot_kernel_matrix(
+    kernel_matrix: np.ndarray,
+    title: str = "Classical Kernel Matrix",
+    save: bool = True,
+    show: bool = True,
+    filename: str = None,
+    output_dir: str = None
+) -> str:
+    """
+    Plots and exports an NxN heatmap representation of a classical kernel Gram matrix.
+    """
+    # 1. Determine plots_dir upfront
+    if output_dir:
+        plots_dir = output_dir
+    else:
+        root = _repo_root_from_utils()
+        plots_dir = os.path.join(root, "plots", "runs")
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    sns.heatmap(
+        kernel_matrix, 
+        cmap="viridis", 
+        cbar=True, 
+        ax=ax, 
+        vmin=0.0, 
+        vmax=1.0
+    )
+    ax.set_title(title)
+    ax.set_xlabel("Sample Index")
+    ax.set_ylabel("Sample Index")
+    fig.tight_layout()
+
+    saved_path = ""
+    if save:
+        os.makedirs(plots_dir, exist_ok=True)
+        fname = filename if filename else _sanitize_filename(title)
+        saved_path = os.path.join(plots_dir, fname)
+        fig.savefig(saved_path, dpi=120)
+        print(f"[classical_visualizer] saved kernel matrix to: {saved_path}")
+
+    if show:
+        plt.show()
+
+    plt.close(fig)
+
+    return saved_path
+
+def plot_confusion_matrix(
+    y_true, 
+    y_pred, 
+    title: str = "Confusion Matrix", 
+    save: bool = True, 
+    show: bool = True, 
+    filename: str = None,
+    output_dir: str = None
+) -> str:
+    """
+    Plots and exports a confusion matrix heatmap.
+    """
+    # 1. Determine plots_dir upfront
+    if output_dir:
+        plots_dir = output_dir
+    else:
+        root = _repo_root_from_utils()
+        plots_dir = os.path.join(root, "plots", "runs")
+    
+    fig, ax = plt.subplots(figsize=(6, 5))
+    cm = confusion_matrix(y_true, y_pred)
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel("Predicted Label")
+    ax.set_ylabel("True Label")
+    fig.tight_layout()
+
+    saved_path = ""
+    if save:
+        os.makedirs(plots_dir, exist_ok=True)
+        fname = filename if filename else _sanitize_filename(title)
+        saved_path = os.path.join(plots_dir, fname)
+        fig.savefig(saved_path, dpi=120)
+        print(f"[classical_visualizer] saved confusion matrix to: {saved_path}")
+
+    if show:
+        plt.show()
+
+    plt.close(fig)
+
+    return saved_path
+
 
 def plot_projected_decision_boundary(
     model,
@@ -31,7 +122,8 @@ def plot_projected_decision_boundary(
     filename: str = None,
     do_pca: bool = True,
     grid_steps: int = 100
-) -> tuple[str, float]:
+) -> tuple[str, float]:    
+    
     """
     Visualizes the decision boundary of a trained classical model and tracks grid evaluation latency.
     """
@@ -83,7 +175,8 @@ def plot_projected_decision_boundary(
     # 5. Export plot artifact
     if save:
         root = _repo_root_from_utils()
-        plots_dir = os.path.join(root, "plots")
+        plots_dir = os.path.join(root, "plots", "runs")
+
         os.makedirs(plots_dir, exist_ok=True)
         fname = filename if filename else _sanitize_filename(title)
         saved_path = os.path.join(plots_dir, fname)
@@ -98,84 +191,3 @@ def plot_projected_decision_boundary(
     plt.close(fig)
 
     return saved_path, plotting_runtime
-
-
-def plot_confusion_matrix(
-    y_true, 
-    y_pred,
-    title="Confusion Matrix",
-    save: bool = True,
-    show: bool = True,
-    filename: str = None
-) -> str:
-    from sklearn.metrics import confusion_matrix
-    import seaborn as sns
-
-    cm = confusion_matrix(y_true, y_pred)
-    fig, ax = plt.subplots(figsize=(5, 4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-    ax.set_title(title)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Actual")
-    fig.tight_layout()
-
-    saved_path = ""
-    if save:
-        root = _repo_root_from_utils()
-        plots_dir = os.path.join(root, "plots")
-        os.makedirs(plots_dir, exist_ok=True)
-        fname = filename if filename else _sanitize_filename(title)
-        saved_path = os.path.join(plots_dir, fname)
-        fig.savefig(saved_path, dpi=120)
-        print(f"[classical_visualizer] saved confusion matrix to: {saved_path}")
-
-    if show:
-        plt.show()
-    
-    plt.close(fig)
-
-    return saved_path
-
-
-def plot_kernel_matrix(
-    kernel_matrix: np.ndarray,
-    title: str = "Classical Kernel Matrix",
-    save: bool = True,
-    show: bool = True,
-    filename: str = None
-) -> str:
-    """
-    Plots and exports an NxN heatmap representation of a classical kernel Gram matrix.
-    """
-    import seaborn as sns
-
-    fig, ax = plt.subplots(figsize=(6, 5))
-    sns.heatmap(
-        kernel_matrix, 
-        cmap="viridis", 
-        cbar=True, 
-        ax=ax, 
-        vmin=0.0, 
-        vmax=1.0
-    )
-    ax.set_title(title)
-    ax.set_xlabel("Sample Index")
-    ax.set_ylabel("Sample Index")
-    fig.tight_layout()
-
-    saved_path = ""
-    if save:
-        root = _repo_root_from_utils()
-        plots_dir = os.path.join(root, "plots")
-        os.makedirs(plots_dir, exist_ok=True)
-        fname = filename if filename else _sanitize_filename(title)
-        saved_path = os.path.join(plots_dir, fname)
-        fig.savefig(saved_path, dpi=120)
-        print(f"[classical_visualizer] saved kernel matrix to: {saved_path}")
-
-    if show:
-        plt.show()
-
-    plt.close(fig)
-
-    return saved_path

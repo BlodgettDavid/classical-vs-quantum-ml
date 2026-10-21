@@ -1,3 +1,4 @@
+import argparse
 import os
 import glob
 import pandas as pd
@@ -7,11 +8,16 @@ import seaborn as sns
 # Dynamically compute project root directory
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 RESULTS_DIR = os.path.join(ROOT_DIR, "results")
-PLOTS_DIR = os.path.join(ROOT_DIR, "plots")
+PLOTS_ROOT = os.path.join(ROOT_DIR, "plots", "global_reports")
 
 
-def load_all_results(results_dir: str = RESULTS_DIR) -> pd.DataFrame:
-    """Finds and concatenates all CSV benchmark logs into a unified DataFrame."""
+def load_targeted_results(
+    results_dir: str = RESULTS_DIR, 
+    dataset_filter: str = None, 
+    model_filter: str = None, 
+    timestamp_filter: str = None
+) -> pd.DataFrame:
+    """Finds, concatenates, and filters CSV benchmark logs based on explicit user criteria."""
     csv_files = glob.glob(os.path.join(results_dir, "*.csv"))
     if not csv_files:
         print(f"[!] No CSV result files found in directory: '{results_dir}'")
@@ -41,17 +47,29 @@ def load_all_results(results_dir: str = RESULTS_DIR) -> pd.DataFrame:
     }
     df_clean = combined_df.rename(columns=column_mapping)
 
-    # Convert timestamp to datetime for reliable sorting & deduplicate to keep latest run per model/dataset
+    # Handle timestamp mapping
     if "timestamp" in df_clean.columns:
+        df_clean["timestamp_str"] = df_clean["timestamp"].astype(str)
         df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"], format="ISO8601", errors="coerce")
+
+    # --- FINE-GRAINED CLI FILTERING ---
+    if dataset_filter:
+        df_clean = df_clean[df_clean["dataset_name"].str.contains(dataset_filter, case=False, na=False)]
+    
+    if model_filter:
+        df_clean = df_clean[df_clean["model_type"].str.contains(model_filter, case=False, na=False)]
+
+    if timestamp_filter:
+        # Isolate exactly the user-specified run batch
+        df_clean = df_clean[df_clean["timestamp_str"].str.contains(timestamp_filter, na=False)]
+    elif "timestamp" in df_clean.columns:
+        # Fallback default if no timestamp is provided: keep the latest run per configuration
         df_clean = df_clean.sort_values("timestamp").groupby(["dataset_name", "model_type"], as_index=False).last()
-    else:
-        df_clean = df_clean.groupby(["dataset_name", "model_type"], as_index=False).last()
 
     return df_clean
 
 
-def plot_accuracy_vs_runtime(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
+def plot_accuracy_vs_runtime(df: pd.DataFrame, output_dir: str):
     """Generates a scatter plot comparing Test Accuracy vs Execution Runtime."""
     if df.empty or "test_accuracy" not in df.columns:
         return
@@ -87,7 +105,7 @@ def plot_accuracy_vs_runtime(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     print(f"[+] Saved: {out_path}")
 
 
-def plot_generalization_gap(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
+def plot_generalization_gap(df: pd.DataFrame, output_dir: str):
     """Generates a bar chart visualizing Generalization Gap (Train Acc - Test Acc)."""
     if df.empty or "train_accuracy" not in df.columns or "test_accuracy" not in df.columns:
         return
@@ -125,7 +143,7 @@ def plot_generalization_gap(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     print(f"[+] Saved: {out_path}")
 
 
-def plot_support_vectors(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
+def plot_support_vectors(df: pd.DataFrame, output_dir: str):
     """Generates a bar chart comparing the number of Support Vectors per model."""
     if df.empty or "num_support_vectors" not in df.columns:
         return
@@ -157,21 +175,35 @@ def plot_support_vectors(df: pd.DataFrame, output_dir: str = PLOTS_DIR):
     print(f"[+] Saved: {out_path}")
 
 
-def generate_all_summary_plots(results_dir=RESULTS_DIR, output_dir=PLOTS_DIR):
-    """Main execution entry point."""
-    os.makedirs(results_dir, exist_ok=True)
+def generate_targeted_summary(dataset_filter=None, model_filter=None, timestamp_filter=None):
+    """Main execution entry point with argument-driven filtering and dynamic subfolder routing."""
+    # Mirror the sweep layout: plots/summaries/<timestamp>/
+    run_timestamp = timestamp_filter if timestamp_filter else pd.Timestamp.now().strftime("%Y-%m-%dT%H-%M-%SZ")
+    output_dir = os.path.join(PLOTS_ROOT, run_timestamp)
+    
+    os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
     
-    df = load_all_results(results_dir)
+    df = load_targeted_results(RESULTS_DIR, dataset_filter, model_filter, timestamp_filter)
     if df.empty:
-        print("[SUMMARY VISUALIZER] Skipping plot generation (no result CSVs found).")
+        print("[SUMMARY VISUALIZER] No matching data found for the given filters. Skipping plot generation.")
         return
 
     plot_accuracy_vs_runtime(df, output_dir)
     plot_generalization_gap(df, output_dir)
     plot_support_vectors(df, output_dir)
-    print("[SUMMARY VISUALIZER] All summary plots updated successfully.")
+    print(f"[+] Fine-grained summary plots successfully saved to: {output_dir}")
 
 
 if __name__ == "__main__":
-    generate_all_summary_plots()
+    parser = argparse.ArgumentParser(description="Fine-grained Targeted MLOps Summary Visualizer")
+    parser.add_argument("--dataset", type=str, default=None, help="Filter by dataset name (e.g., parity)")
+    parser.add_argument("--model", type=str, default=None, help="Filter by model type (e.g., QSVM or SVM)")
+    parser.add_argument("--timestamp", type=str, default=None, help="Target a specific run timestamp batch")
+    
+    args = parser.parse_args()
+    generate_targeted_summary(
+        dataset_filter=args.dataset, 
+        model_filter=args.model, 
+        timestamp_filter=args.timestamp
+    )

@@ -4,87 +4,65 @@ datasets:
     split_ratio: 0.3
     random_state: 42
     scale_data: true
+    # ---------------------------------------------------------------------------
+    # DIMENSIONALITY REDUCTION (PCA) CONFIGURATION:
+    # 
+    # Note for Students & Developers:
+    # - Automated Sweeps: Parameters defined as lists (e.g., [2, 4]) are treated 
+    #   as a search space. Sweep orchestrators will loop through every value in 
+    #   the list to run multi-stage benchmarking comparisons.
+    # - Standalone Runs: Individual runner scripts (e.g., SVM_BreastCancer_PCA.py) 
+    #   automatically select the primary/default setting by grabbing the first 
+    #   element of the list (index 0) to ensure single-run stability without 
+    #   requiring hardcoded values in the source code.
+    # ---------------------------------------------------------------------------
     pca_components: [2, 4]
-    
-    # Execution & simulation backends
     backend_config:
-      type: "statevector"       # Options: "statevector", "aer_simulator"
-      shots: null               # Null for exact statevector math
-    
-    # Model parameters
+      type: "statevector"
+      shots: null
     svm_params:
-      c_val: 1.0
-      class_weight: "balanced"  # <-- FIX 1: Prevents majority class collapse (TN=0)
-
-    # Quantum feature maps to benchmark
+      C: 1.0
+      class_weight: "balanced"
     quantum_params:
       feature_maps:
         - name: "ZZFeatureMap"
-          reps: 1               # <-- FIX 2: Reduced reps to prevent phase over-rotation
+          reps: 1
           entanglement: "full"
         - name: "PauliFeatureMap"
-          reps: 1               # <-- FIX 2: Lower circuit depth (depth ~5 instead of ~10/31)
+          reps: 1
           entanglement: "linear"
           paulis: ["Z", "ZZ"]
-
-    # Visualization settings
     visualization:
-      plot_decision_boundary: true
       grid_steps: 25
       output_dir: "plots"
 
   parity4d:
-    dataset: "parity4d_stressed"
-    split_ratio: 0.125          # Reduced test split from 0.25 to 0.125 (gives more training data)
+    dataset_name: "parity4d_stressed"
+    split_ratio: 0.25
     random_state: 42
     scale_data: true
-
+    # ---------------------------------------------------------------------------
+    # DIMENSIONALITY REDUCTION (PCA) CONFIGURATION FOR PARITY:
+    # 
+    # Note for Students & Developers:
+    # - Why PCA is Disabled ([0]): The parity dataset is 4-dimensional, living 
+    #   strictly on the discrete corners of a 4D hypercube. 
+    # - Information Preservation: Applying PCA to reduce 4D down to 2D would 
+    #   compress and scramble these strict binary parity relationships before 
+    #   the classifier (classical or quantum) ever gets to evaluate them.
+    # - Flexibility: Keeping it as a list allows you to experiment with projection 
+    #   down to 2 components [2] if you ever want to study information loss, 
+    #   while [0] preserves full 4D hypercube fidelity by default.
+    # ---------------------------------------------------------------------------
+    pca_components: [0]
+    pca_components: [0]
     backend_config:
       type: "statevector"
       shots: null
-
     svm_params:
-      C: 0.1                    # Adjusted to C=0.1 to widen SVM margins and prevent SV saturation
-
+      C: 0.1
     quantum_params:
       feature_maps:
         - name: "ZZFeatureMap"
           reps: 1
           entanglement: "full"
-        - name: "PauliFeatureMap"
-          reps: 1
-          entanglement: "linear"
-          paulis: ["Z", "ZZ", "ZZZZ"]
-
-  wine_top6:
-    dataset_name: "wine_top6"
-    split_ratio: 0.3
-    random_state: 42
-    scale_data: true
-    pca_components: [0, 2]       # 0 = 6 qubits direct encoding, 2 = 2 qubits with PCA
-    
-    # Execution & simulation backends
-    backend_config:
-      type: "statevector"
-      shots: null
-    
-    # Model parameters
-    svm_params:
-      c_val: 1.0
-
-    # Quantum feature maps to benchmark
-    quantum_params:
-      feature_maps:
-        - name: "ZZFeatureMap"
-          reps: 2
-          entanglement: "linear"
-        - name: "PauliFeatureMap"
-          reps: 2
-          entanglement: "linear"
-          paulis: ["Z", "ZZ"]
-
-    # Visualization toggles
-    visualization:
-      plot_decision_boundary: true
-      grid_steps: 15
-      max_pca_dims_for_plot: 2
