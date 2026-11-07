@@ -21,7 +21,7 @@ def load_config(config_name="classical_svm.yaml", dataset_key=None):
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Configuration file not found at: {config_path}")
 
-    with open(config_path, "r") as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         full_config = yaml.safe_load(f)
 
     if dataset_key:
