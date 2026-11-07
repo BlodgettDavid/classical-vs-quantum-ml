@@ -1,66 +1,127 @@
 datasets:
   breast_cancer:
+    # Dataset identifier for clinical classification workflows
     dataset_name: "breast_cancer"
+    
+    # Proportion of data allocated for testing (30% test, 70% train)
     split_ratio: 0.3
+    
+    # Pseudo-random seed to ensure cross-run reproducibility
     random_state: 42
+    
+    # Standardizes input features (zero mean, unit variance) to ensure 
+    # data scales cleanly into quantum amplitude/angle rotation gates.
     scale_data: true
+
     # ---------------------------------------------------------------------------
     # DIMENSIONALITY REDUCTION (PCA) CONFIGURATION:
     # 
     # Note for Students & Developers:
     # - Automated Sweeps: Parameters defined as lists (e.g., [2, 4]) are treated 
-    #   as a search space. Sweep orchestrators will loop through every value in 
-    #   the list to run multi-stage benchmarking comparisons.
-    # - Standalone Runs: Individual runner scripts (e.g., SVM_BreastCancer_PCA.py) 
-    #   automatically select the primary/default setting by grabbing the first 
-    #   element of the list (index 0) to ensure single-run stability without 
-    #   requiring hardcoded values in the source code.
+    #   as a search space for multi-stage benchmarking comparisons.
+    # - Standalone Runs: Individual runner scripts grab the first element 
+    #   of the list (index 0) to ensure single-run stability.
     # ---------------------------------------------------------------------------
     pca_components: [2, 4]
+
+    # ---------------------------------------------------------------------------
+    # QUANTUM BACKEND CONFIGURATION:
+    # 
+    # - type: "statevector" (exact analytical state vector simulation without shot noise)
+    #         or "qasm_simulator" / hardware backend for finite-shot sampling.
+    # - shots: Number of measurement circuit evaluations. Set to 'null' when using 
+    #          an exact statevector backend, or an integer (e.g., 1024, 4096) for noisy simulations.
+    # ---------------------------------------------------------------------------
     backend_config:
       type: "statevector"
       shots: null
+
     svm_params:
+      # Regularization parameter (C) trading off training error and margin maximization.
       C: 1.0
+      
+      # Automatically adjusts weights inversely proportional to class frequencies 
+      # to handle class imbalance in clinical datasets.
       class_weight: "balanced"
+
+    # ---------------------------------------------------------------------------
+    # QUANTUM FEATURE MAP CONFIGURATION (The Encoding Layer):
+    # 
+    # Defines how classical features are mapped into a Hilbert space. 
+    # Structured as a list to allow sweep orchestrators to benchmark different circuit topologies.
+    # ---------------------------------------------------------------------------
     quantum_params:
       feature_maps:
+          # -------------------------------------------------------------------------
+          # QUANTUM ENCODING: ZZFeatureMap
+          # 
+          # What it does: 
+          # Maps classical data into a high-dimensional Hilbert space by applying 
+          # Hadamard gates for superposition and parameterized phase rotations 
+          # involving Z and ZZ tensor products.
+          # 
+          # Key Hyperparameters:
+          # - reps (1): Controls the circuit depth. Higher repetition (e.g., reps: 2) 
+          #   increases the expressibility of the feature map, allowing it to capture 
+          #   more complex non-linear boundaries at the cost of circuit noise on hardware.
+          # - entanglement ("full"): Determines how qubits interact. "full" connects 
+          #   every qubit to all others, maximizing entanglement; "linear" restricts 
+          #   connections to nearest neighbors in a chain.
+          # -------------------------------------------------------------------------
         - name: "ZZFeatureMap"
           reps: 1
           entanglement: "full"
+          
+          # -------------------------------------------------------------------------
+          # QUANTUM ENCODING: PauliFeatureMap
+          # 
+          # What it does:
+          # A highly customizable feature map that builds quantum circuits using 
+          # arbitrary Pauli string rotations (X, Y, Z, ZZ, etc.). It allows you 
+          # to explicitly define which qubit interactions are modeled.
+          # 
+          # Key Hyperparameters:
+          # - reps (1): Circuit depth. Repeating the mapping layer increases 
+          #   non-linear expressive capacity.
+          # - entanglement ("linear"): Connects qubits in a sequential chain 
+          #   (qubit i to i+1) rather than all-to-all, reducing gate count.
+          # - paulis (["Z", "ZZ"]): Specifies the rotation operators. Single-qubit 
+          #   "Z" terms capture individual feature weights, while two-qubit "ZZ" terms 
+          #   capture pairwise feature interactions.
+          # -------------------------------------------------------------------------
+
         - name: "PauliFeatureMap"
           reps: 1
           entanglement: "linear"
           paulis: ["Z", "ZZ"]
+
     visualization:
       grid_steps: 25
       output_dir: "plots"
 
   parity4d:
+    # Uses stressed parity to test quantum kernel efficacy on non-linear hypercube corners
     dataset_name: "parity4d_stressed"
     split_ratio: 0.25
     random_state: 42
     scale_data: true
+
     # ---------------------------------------------------------------------------
     # DIMENSIONALITY REDUCTION (PCA) CONFIGURATION FOR PARITY:
     # 
-    # Note for Students & Developers:
-    # - Why PCA is Disabled ([0]): The parity dataset is 4-dimensional, living 
-    #   strictly on the discrete corners of a 4D hypercube. 
-    # - Information Preservation: Applying PCA to reduce 4D down to 2D would 
-    #   compress and scramble these strict binary parity relationships before 
-    #   the classifier (classical or quantum) ever gets to evaluate them.
-    # - Flexibility: Keeping it as a list allows you to experiment with projection 
-    #   down to 2 components [2] if you ever want to study information loss, 
-    #   while [0] preserves full 4D hypercube fidelity by default.
+    # - Why PCA is Disabled ([0]): Parity lives strictly on the discrete corners 
+    #   of a 4D hypercube. Reducing 4D down via PCA would scramble these 
+    #   binary parity relationships before the quantum kernel can evaluate them.
     # ---------------------------------------------------------------------------
     pca_components: [0]
-    pca_components: [0]
+
     backend_config:
       type: "statevector"
       shots: null
+
     svm_params:
       C: 0.1
+
     quantum_params:
       feature_maps:
         - name: "ZZFeatureMap"

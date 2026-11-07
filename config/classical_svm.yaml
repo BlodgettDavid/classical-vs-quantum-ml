@@ -1,51 +1,100 @@
+#config/classical_svm.yaml
 datasets:
   breast_cancer:
+    # Dataset identifier for clinical classification workflows
     dataset_name: "breast_cancer"
+    
+    # Proportion of data allocated for testing (30% test, 70% train)
     split_ratio: 0.3
+    
+    # Pseudo-random seed to ensure cross-run reproducibility
     random_state: 42
+    
+    # Standardizes input features (zero mean, unit variance) to prevent 
+    # features with larger numerical ranges from dominating distance-based solvers.
     scale_data: true
+
     # ---------------------------------------------------------------------------
     # DIMENSIONALITY REDUCTION (PCA) CONFIGURATION:
     # 
     # Note for Students & Developers:
     # - Automated Sweeps: Parameters defined as lists (e.g., [2, 4]) are treated 
-    #   as a search space. Sweep orchestrators will loop through every value in 
-    #   the list to run multi-stage benchmarking comparisons.
-    # - Standalone Runs: Individual runner scripts (e.g., SVM_BreastCancer_PCA.py) 
-    #   automatically select the primary/default setting by grabbing the first 
-    #   element of the list (index 0) to ensure single-run stability without 
-    #   requiring hardcoded values in the source code.
+    #   as a search space for multi-stage benchmarking comparisons.
+    # - Standalone Runs: Individual runner scripts grab the first element 
+    #   of the list (index 0) to ensure single-run stability.
     # ---------------------------------------------------------------------------
     pca_components: [4]
+
     svm_params:
+      # -------------------------------------------------------------------------
+      # KERNEL CONFIGURATION & PEDAGOGICAL REFERENCE:
+      # 
+      # Available types: "linear", "rbf", "poly", "sigmoid", "precomputed"
+      # - Linear: Fits a flat hyperplane. Fails on parity; works well on clinical data.
+      # - RBF: Non-linear Gaussian mapping. Excellent flexible baseline.
+      # - Poly: Polynomial feature interactions (controlled by 'degree').
+      # - Sigmoid: Neural-network activation equivalent (tanh).
+      # - Precomputed: Bypasses classical space to ingest quantum kernel matrices.
+      # 
+      # Note: If you leave degree or gamma set while testing a linear kernel, 
+      # scikit-learn does not throw an error—it simply ignores those inactive settings.
+      # -------------------------------------------------------------------------
       kernel: "rbf"
+
+      # -------------------------------------------------------------------------
+      # REGULARIZATION (C) HYPERPARAMETER:
+      # 
+      # Trades off training error against maximization of the decision margin.
+      # Recommended student experiment range: C in [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
+      # 
+      # - Underfitting End (C = 0.01): Over-simplified boundary, wide margin, high error.
+      # - The Sweet Spot (C = 1.0 - 10.0): Balanced generalization.
+      # - Overfitting End (C = 100.0 - 1000.0): Jagged boundary tracking isolated noise.
+      # -------------------------------------------------------------------------
       C: 1.0
+
+      # -------------------------------------------------------------------------
+      # GAMMA HYPERPARAMETER (Active for: rbf, poly, sigmoid):
+      # 
+      # Controls the radius of influence/curvature for individual training points.
+      # - "scale": Automatically calculated as 1 / (n_features * X.var())
+      # - "auto": Calculated as 1 / n_features
+      # - Manual Floats: e.g., [0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+      # Ignored entirely by "linear" and "precomputed" kernels.
+      # -------------------------------------------------------------------------
       gamma: "scale"
+
+      # -------------------------------------------------------------------------
+      # DEGREE HYPERPARAMETER (Active ONLY for: poly):
+      # 
+      # Sets the polynomial expansion power. Ignored by rbf, linear, and sigmoid.
+      # - degree: 1 -> Collapses polynomial into a linear combination.
+      # - degree: 2 (Quadratic) -> Captures pairwise interactions (x₁², x₂², x₁x₂).
+      # - degree: 3 (Cubic) -> Three-way feature interactions for winding boundaries.
+      # - degree: 4 or 5 -> High-order non-linearity (risk of exploding values if unscaled).
+      # -------------------------------------------------------------------------
       degree: 0
+
     visualization:
       grid_steps: 100
       output_dir: "plots"
 
   parity4d:
+    # Uses stressed parity to introduce noise and test model robustness
     dataset_name: "parity4d_stressed"
     split_ratio: 0.25
     random_state: 42
     scale_data: false
+
     # ---------------------------------------------------------------------------
     # DIMENSIONALITY REDUCTION (PCA) CONFIGURATION FOR PARITY:
     # 
-    # Note for Students & Developers:
-    # - Why PCA is Disabled ([0]): The parity dataset is 4-dimensional, living 
-    #   strictly on the discrete corners of a 4D hypercube. 
-    # - Information Preservation: Applying PCA to reduce 4D down to 2D would 
-    #   compress and scramble these strict binary parity relationships before 
-    #   the classifier (classical or quantum) ever gets to evaluate them.
-    # - Flexibility: Keeping it as a list allows you to experiment with projection 
-    #   down to 2 components [2] if you ever want to study information loss, 
-    #   while [0] preserves full 4D hypercube fidelity by default.
+    # - Why PCA is Disabled ([0]): Parity lives strictly on the discrete corners 
+    #   of a 4D hypercube. Reducing 4D down via PCA would scramble these 
+    #   binary parity relationships before classifiers can evaluate them.
     # ---------------------------------------------------------------------------
     pca_components: [0]
-    pca_components: [0]    
+
     svm_params:
       kernel: "rbf"
       C: 10.0
