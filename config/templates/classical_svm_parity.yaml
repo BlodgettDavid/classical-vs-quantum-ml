@@ -1,0 +1,41 @@
+# =============================================================================
+# CLASSICAL SVM: PARITY DATASET TEMPLATE
+# =============================================================================
+# Course: CS 402 Applied Math for Current Topics in Computer Science
+# Purpose: Baseline classical RBF/Poly SVM evaluation on discrete parity.
+# =============================================================================
+
+dataset_name: "parity4d_stressed"
+
+# -----------------------------------------------------------------------------
+# EXPERIMENT CONTROL DEFAULTS (Fixed for Reproducibility)
+# -----------------------------------------------------------------------------
+split_ratio: 0.25     # Reserves 25% of data for test evaluation; keep fixed across benchmarks.
+random_state: 42      # Seeds the train/test split shuffling to guarantee deterministic subsets.
+scale_data: false     # FALSE for parity: preserves exact discrete corners of the 4D hypercube.
+
+# -----------------------------------------------------------------------------
+# DIMENSIONALITY REDUCTION (PCA)
+# -----------------------------------------------------------------------------
+# Parity lives on the discrete corners of a 4D hypercube. PCA is disabled ([0]) 
+# to prevent continuous projections from scrambling these critical binary relationships.
+pca_components: [0]
+
+# -----------------------------------------------------------------------------
+# SVM HYPERPARAMETERS
+# -----------------------------------------------------------------------------
+svm_params:
+  kernel: "rbf"        # Mathematical transformation function. 
+                       # Options: "linear", "rbf", "poly", "sigmoid".
+
+  C: 10.0              # Regularization parameter (must be > 0). 
+                       # Controls the trade-off between training error and margin maximization.
+                       # Higher values heavily penalize misclassifications; lower values widen margins.
+
+  gamma: "scale"       # Kernel coefficient for 'rbf', 'poly', and 'sigmoid'. 
+                       # Defines the radius of influence for single training points. 
+                       # 'scale' automatically computes: 1 / (n_features * X.var()). 
+                       # (Dormant when kernel is "linear").
+
+  degree: 4            # Degree of the polynomial kernel function. 
+                       # Active ONLY when kernel is "poly" (dormant for RBF, linear, and sigmoid).

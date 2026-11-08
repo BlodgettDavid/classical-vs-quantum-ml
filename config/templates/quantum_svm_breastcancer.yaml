@@ -1,0 +1,37 @@
+# =============================================================================
+# QUANTUM SVM (QSVC): BREAST CANCER DATASET TEMPLATE
+# =============================================================================
+# Course: CS 402 Applied Math for Current Topics in Computer Science
+# Purpose: Quantum kernel evaluation utilizing Estimator and PauliFeatureMap.
+# =============================================================================
+
+dataset_name: "breast_cancer"
+
+# -----------------------------------------------------------------------------
+# EXPERIMENT CONTROL DEFAULTS (Fixed for Reproducibility)
+# -----------------------------------------------------------------------------
+split_ratio: 0.20     # Reserves 20% of data for test evaluation; keep fixed across benchmarks.
+random_state: 42      # Seeds the train/test split shuffling to guarantee deterministic subsets.
+scale_data: true      # TRUE for continuous features: standardizes values prior to PCA/encoding.
+
+# -----------------------------------------------------------------------------
+# DIMENSIONALITY REDUCTION (PCA)
+# -----------------------------------------------------------------------------
+# Reduced to 2 components to keep quantum statevector simulation tractable.
+pca_components: [2]
+
+# -----------------------------------------------------------------------------
+# QUANTUM CIRCUIT & BACKEND CONFIGURATION
+# -----------------------------------------------------------------------------
+quantum_params:
+  backend: "CPU_Quantum_Simulator"  # Specifies local statevector CPU simulation backend.
+
+  feature_map: "PauliFeatureMap"    # Quantum encoding circuit structure.
+                                    # Flexible encoding suitable for continuous features.
+
+  reps: 1                           # Single repetition layer to maintain low circuit depth.
+
+  entanglement: "linear"            # Entanglement topology ("full", "linear", "circular").
+                                    # "linear" connects adjacent qubits sequentially (0-1).
+
+  num_qubits: 2                     # Aligns strictly with the 2 post-PCA components.
