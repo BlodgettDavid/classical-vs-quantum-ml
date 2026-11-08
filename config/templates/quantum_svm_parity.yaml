@@ -1,0 +1,39 @@
+# =============================================================================
+# QUANTUM SVM (QSVC): PARITY DATASET TEMPLATE
+# =============================================================================
+# Course: CS 402 Applied Math for Current Topics in Computer Science
+# Purpose: Quantum kernel evaluation utilizing Sampler and ZZFeatureMap.
+# =============================================================================
+
+dataset_name: "parity4d_stressed"
+
+# -----------------------------------------------------------------------------
+# EXPERIMENT CONTROL DEFAULTS (Fixed for Reproducibility)
+# -----------------------------------------------------------------------------
+split_ratio: 0.25     # Reserves 25% of data for test evaluation; keep fixed across benchmarks.
+random_state: 42      # Seeds the train/test split shuffling to guarantee deterministic subsets.
+scale_data: false     # FALSE for parity: preserves exact discrete hypercube geometry.
+
+# -----------------------------------------------------------------------------
+# DIMENSIONALITY REDUCTION (PCA)
+# -----------------------------------------------------------------------------
+# PCA disabled ([0]) because discrete 4D parity vectors directly map to 4 qubits.
+pca_components: [0]
+
+# -----------------------------------------------------------------------------
+# QUANTUM CIRCUIT & BACKEND CONFIGURATION
+# -----------------------------------------------------------------------------
+quantum_params:
+  backend: "CPU_Quantum_Simulator"  # Specifies local statevector CPU simulation backend.
+
+  feature_map: "ZZFeatureMap"       # Quantum encoding circuit structure.
+                                    # ZZFeatureMap explicitly models second-order non-linear 
+                                    # parity interactions between qubit pairs.
+
+  reps: 2                           # Circuit repetition depth (layers of entanglement gates).
+                                    # Higher values increase expressibility but increase simulation runtime.
+
+  entanglement: "full"              # Entanglement topology between qubits ("full", "linear", "circular").
+                                    # "full" couples every qubit pair to capture all 4D parity terms.
+
+  num_qubits: 4                     # Matches input feature dimension (4 discrete binary features).

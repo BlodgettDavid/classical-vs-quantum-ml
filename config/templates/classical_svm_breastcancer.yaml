@@ -1,0 +1,38 @@
+# =============================================================================
+# CLASSICAL SVM: BREAST CANCER DATASET TEMPLATE
+# =============================================================================
+# Course: CS 402 Applied Math for Current Topics in Computer Science
+# Purpose: Continuous feature classification with PCA dimensionality reduction.
+# =============================================================================
+
+dataset_name: "breast_cancer"
+
+# -----------------------------------------------------------------------------
+# EXPERIMENT CONTROL DEFAULTS (Fixed for Reproducibility)
+# -----------------------------------------------------------------------------
+split_ratio: 0.20     # Reserves 20% of data for test evaluation; keep fixed across benchmarks.
+random_state: 42      # Seeds the train/test split shuffling to guarantee deterministic subsets.
+scale_data: true      # TRUE for continuous features: standardizes mixed physical units/scales.
+
+# -----------------------------------------------------------------------------
+# DIMENSIONALITY REDUCTION (PCA)
+# -----------------------------------------------------------------------------
+# Reduces high-dimensional continuous biomedical features down to 2 principal components
+# to match quantum simulation qubit limitations and allow baseline comparison.
+pca_components: [2]
+
+# -----------------------------------------------------------------------------
+# SVM HYPERPARAMETERS
+# -----------------------------------------------------------------------------
+svm_params:
+  kernel: "linear"     # Mathematical transformation function.
+                       # Options: "linear", "rbf", "poly", "sigmoid".
+
+  C: 1.0               # Regularization parameter (must be > 0).
+                       # Controls trade-off between training error and margin width.
+
+  gamma: "scale"       # Kernel coefficient for 'rbf', 'poly', and 'sigmoid'.
+                       # (Dormant when kernel is "linear").
+
+  degree: 3            # Degree of polynomial kernel function.
+                       # (Dormant when kernel is "linear").
