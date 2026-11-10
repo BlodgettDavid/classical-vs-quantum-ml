@@ -1,0 +1,19 @@
+{
+  "name": "Classical vs Quantum ML (Python 3.11)",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "ml-environment",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvironment": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  },
+  "remoteUser": "root"
+}
