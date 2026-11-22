@@ -7,7 +7,8 @@
     "vscode": {
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "python.terminal.activateEnvironment": true
+        "python.terminal.activateEnvironment": false,
+        "git.openRepositoryInParentFolders": "never"
       },
       "extensions": [
         "ms-python.python",
@@ -15,5 +16,6 @@
       ]
     }
   },
+  "postCreateCommand": "git config --global --add safe.directory /app",
   "remoteUser": "root"
 }

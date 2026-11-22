@@ -6,8 +6,6 @@ services:
     container_name: classical-vs-quantum-ml-env
     volumes:
       - .:/app
-      - ./results:/app/results
-      - ./plots:/app/plots
     tty: true
     stdin_open: true
     command: /bin/bash
